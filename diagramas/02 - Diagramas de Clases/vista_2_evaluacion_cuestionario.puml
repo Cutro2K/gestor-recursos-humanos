@@ -1,0 +1,169 @@
+@startuml
+title Vista 2 - Evaluación y resolución del cuestionario
+
+left to right direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam classBackgroundColor #FFF4CC
+skinparam classBorderColor #C89520
+skinparam classBackgroundColor<<referencia>> #F8F8F8
+skinparam classBorderColor<<referencia>> #777777
+skinparam classBackgroundColor<<enum>> #FFE2E2
+skinparam classBorderColor<<enum>> #C75B5B
+
+package "Referencias del catálogo" {
+  class Puesto <<referencia>> {
+    -id: Long
+    -nombre: String
+    -empresa: String
+  }
+  class Competencia <<referencia>> {
+    -id: Long
+    -nombre: String
+  }
+  class Factor <<referencia>> {
+    -id: Long
+    -nombre: String
+  }
+  class Pregunta <<referencia>> {
+    -id: Long
+    -enunciado: String
+  }
+  class ItemOpcion <<referencia>> {
+    -id: Long
+    -descripcion: String
+  }
+}
+
+package "Evaluación" {
+  class Candidato {
+    -id: Long
+    -nroCandidato: Long
+    -apellido: String
+    -nombre: String
+    -tipoDocumento: TipoDocumento
+    -nroDocumento: String
+    -email: String
+  }
+
+  class Evaluacion {
+    -id: Long
+    -fechaCreacion: DateTime
+    -versionModelo: String
+    -nombreArchivoExcel: String
+  }
+
+  class Cuestionario {
+    -id: Long
+    -claveIngreso: String
+    -estado: EstadoCuestionario
+    -fechaGeneracion: DateTime
+    -fechaInicio: DateTime
+    -fechaFin: DateTime
+    -ultimoIngreso: DateTime
+    -cantidadAccesos: Integer
+    -cantidadMaximaAccesos: Integer
+    -tiempoMaximoMinutos: Integer
+    -cantidadPreguntasPorBloque: Integer
+    +cambiarEstado(nuevoEstado): void
+    +calcularResultados(): void
+  }
+
+  enum TipoDocumento <<enum>> {
+    DNI
+    LE
+    LC
+    PP
+  }
+
+  enum EstadoCuestionario <<enum>> {
+    ACTIVO
+    EN_PROCESO
+    COMPLETO
+    INCOMPLETO
+    SIN_CONTESTAR
+  }
+
+  Puesto "1" <-- "0..*" Evaluacion : corresponde a
+  Evaluacion "1" *-- "1..*" Cuestionario : genera
+  Candidato "1" <-- "0..*" Cuestionario : completa
+  Candidato ..> TipoDocumento
+  Cuestionario ..> EstadoCuestionario
+}
+
+package "Contenido y resultados" {
+  class BloqueCuestionario {
+    -numero: Integer
+    -completado: Boolean
+    +estaCompleto(): Boolean
+  }
+
+  class PreguntaCuestionario {
+    -id: Long
+    -orden: Integer
+    -enunciadoSnapshot: String
+    -respondida: Boolean
+  }
+
+  class OpcionCuestionario {
+    -id: Long
+    -orden: Integer
+    -descripcionSnapshot: String
+    -ponderacionSnapshot: Double
+  }
+
+  class RespuestaCandidato {
+    -id: Long
+    -fechaRespuesta: DateTime
+  }
+
+  class ResultadoCompetencia {
+    -puntajeObtenido: Double
+  }
+
+  class ResultadoFactor {
+    -puntajeObtenido: Double
+  }
+
+  Cuestionario "1" *-- "1..*" BloqueCuestionario : divide en
+  BloqueCuestionario "1" *-- "1..*" PreguntaCuestionario : contiene
+  PreguntaCuestionario "0..*" --> "1" Pregunta : origen
+  PreguntaCuestionario "1" *-- "2..*" OpcionCuestionario : opciones
+  OpcionCuestionario "0..*" --> "1" ItemOpcion : origen
+  PreguntaCuestionario "1" *-- "0..1" RespuestaCandidato : respuesta
+  RespuestaCandidato "0..*" --> "1" OpcionCuestionario : selecciona
+  Cuestionario "1" *-- "0..*" ResultadoCompetencia : resultados
+  ResultadoCompetencia "0..*" --> "1" Competencia
+  ResultadoCompetencia "1" *-- "1..*" ResultadoFactor : detalle
+  ResultadoFactor "0..*" --> "1" Factor
+}
+
+note bottom of Evaluacion
+  Fija la version del modelo usada por
+  todos sus cuestionarios, aunque cada
+  uno seleccione preguntas al azar.
+end note
+
+note bottom of Cuestionario
+  Un candidato solo puede tener uno
+  ACTIVO o EN_PROCESO.
+end note
+
+note bottom of PreguntaCuestionario
+  Se seleccionan 2 preguntas al azar
+  por cada factor evaluable. Los snapshots
+  permiten reanudarla sin que cambios del
+  catalogo alteren lo que ya fue mostrado.
+end note
+
+note bottom of BloqueCuestionario
+  Una vez completado no puede volver
+  a visualizarse ni modificarse.
+end note
+
+@enduml

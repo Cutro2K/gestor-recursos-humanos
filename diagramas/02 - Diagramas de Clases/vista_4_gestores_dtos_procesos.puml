@@ -1,0 +1,156 @@
+@startuml
+title Vista 4 - Gestores y DTOs de evaluación
+
+top to bottom direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam classBackgroundColor<<gestor>> #DDEEFF
+skinparam classBorderColor<<gestor>> #4078C0
+skinparam classBackgroundColor<<dto>> #E5F7E7
+skinparam classBorderColor<<dto>> #4C9A5F
+
+package "Gestores de evaluación" {
+  class GestorAutenticacion <<gestor>> {
+    +autenticarConsultor(usuario, contrasena): SesionDTO
+    +autenticarCandidato(tipoDoc, nroDoc, clave): SesionDTO
+  }
+  class GestorEvaluacion <<gestor>> {
+    +evaluarCandidatos(datos: EvaluacionDTO): EvaluacionResultadoDTO
+    +exportarClavesExcel(evaluacionId, ruta): ArchivoDTO
+  }
+  class GestorCuestionario <<gestor>> {
+    +obtenerActivo(candidatoId): CuestionarioDTO
+    +guardarBloque(datos: BloqueRespondidoDTO): void
+    +finalizar(cuestionarioId): void
+    +finalizarVencidos(): void
+  }
+  class GestorReportes <<gestor>> {
+    +comparativo(puestoId, candidatoId): ReporteComparativoDTO
+    +ordenMerito(puestoId, evaluacionIds): OrdenMeritoDTO
+  }
+}
+
+package "DTOs de evaluación" {
+  enum TipoDocumento {
+    DNI
+    LE
+    LC
+    PP
+  }
+  enum EstadoCuestionario {
+    ACTIVO
+    EN_PROCESO
+    COMPLETO
+    INCOMPLETO
+    SIN_CONTESTAR
+  }
+  class EvaluacionDTO <<dto>> {
+    +puestoId: Long
+    +candidatoIds: List~Long~
+  }
+  class EvaluacionResultadoDTO <<dto>> {
+    +evaluacionId: Long
+    +credenciales: List~CredencialCuestionarioDTO~
+  }
+  class CredencialCuestionarioDTO <<dto>> {
+    +candidatoId: Long
+    +apellido: String
+    +nombre: String
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+    +claveIngreso: String
+  }
+  class ArchivoDTO <<dto>> {
+    +nombre: String
+    +ruta: String
+    +tipoMime: String
+  }
+  class SesionDTO <<dto>> {
+    +sujetoId: Long
+    +rol: String
+  }
+  class CuestionarioDTO <<dto>> {
+    +id: Long
+    +estado: EstadoCuestionario
+    +bloqueActual: Integer
+    +cantidadAccesos: Integer
+    +tiempoMaximoMinutos: Integer
+  }
+  class BloqueCuestionarioDTO <<dto>> {
+    +id: Long
+    +numero: Integer
+    +completado: Boolean
+  }
+  class PreguntaCuestionarioDTO <<dto>> {
+    +preguntaCuestionarioId: Long
+    +enunciado: String
+    +orden: Integer
+  }
+  class OpcionCuestionarioDTO <<dto>> {
+    +opcionCuestionarioId: Long
+    +orden: Integer
+    +descripcion: String
+  }
+  class BloqueRespondidoDTO <<dto>> {
+    +cuestionarioId: Long
+    +bloqueId: Long
+    +respuestas: List~RespuestaDTO~
+  }
+  class RespuestaDTO <<dto>> {
+    +preguntaCuestionarioId: Long
+    +opcionCuestionarioId: Long
+  }
+  class ReporteComparativoDTO <<dto>> {
+    +puesto: String
+    +candidato: String
+    +lineas: List~LineaComparativaDTO~
+    +grafico: String
+    +fechaEmision: DateTime
+  }
+  class LineaComparativaDTO <<dto>> {
+    +competencia: String
+    +ponderacionRequerida: Double
+    +ponderacionObtenida: Double
+  }
+  class OrdenMeritoDTO <<dto>> {
+    +puesto: String
+    +evaluacionIds: List~Long~
+    +candidatos: List~LineaOrdenMeritoDTO~
+    +fechaEmision: DateTime
+  }
+  class LineaOrdenMeritoDTO <<dto>> {
+    +posicion: Integer
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+    +apellido: String
+    +nombre: String
+    +puntajeObtenido: Double
+    +estado: EstadoCuestionario
+    +cumpleMinimos: Boolean
+    +fechaInicio: DateTime
+    +fechaFin: DateTime
+    +ultimoIngreso: DateTime
+    +cantidadAccesos: Integer
+  }
+  EvaluacionResultadoDTO "1" *-- "1..*" CredencialCuestionarioDTO : credenciales
+  ReporteComparativoDTO "1" *-- "1..*" LineaComparativaDTO : lineas
+  OrdenMeritoDTO "1" *-- "1..*" LineaOrdenMeritoDTO : candidatos
+}
+
+GestorAutenticacion ..> SesionDTO
+GestorEvaluacion ..> EvaluacionDTO
+GestorEvaluacion ..> EvaluacionResultadoDTO
+GestorCuestionario ..> CuestionarioDTO
+GestorCuestionario ..> BloqueRespondidoDTO
+CuestionarioDTO "1" *-- "1..*" BloqueCuestionarioDTO : bloques
+BloqueCuestionarioDTO "1" *-- "1..*" PreguntaCuestionarioDTO : preguntas
+PreguntaCuestionarioDTO "1" *-- "2..*" OpcionCuestionarioDTO : opciones
+GestorReportes ..> ReporteComparativoDTO
+GestorReportes ..> OrdenMeritoDTO
+
+@enduml

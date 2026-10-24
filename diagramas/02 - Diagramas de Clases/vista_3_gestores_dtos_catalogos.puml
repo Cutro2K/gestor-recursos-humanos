@@ -1,0 +1,143 @@
+@startuml
+title Vista 3 - Gestores y DTOs de administración
+
+top to bottom direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam classBackgroundColor<<gestor>> #DDEEFF
+skinparam classBorderColor<<gestor>> #4078C0
+skinparam classBackgroundColor<<dto>> #E5F7E7
+skinparam classBorderColor<<dto>> #4C9A5F
+
+package "Gestores de administración" {
+  class GestorCandidatos <<gestor>> {
+    +importarCSV(ruta): ResultadoImportacionDTO
+    +buscar(apellido, nombre, numero): List~CandidatoDTO~
+    +exportarResultados(ruta): void
+  }
+  class GestorPuestos <<gestor>> {
+    +buscar(codigo, nombre, empresa): List~PuestoDTO~
+    +darDeAlta(datos: PuestoDTO): void
+    +modificar(datos: PuestoDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+  class GestorCompetencias <<gestor>> {
+    +buscar(nombre): List~CompetenciaDTO~
+    +darDeAlta(datos: CompetenciaDTO): void
+    +modificar(datos: CompetenciaDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+  class GestorFactores <<gestor>> {
+    +buscar(competencia, nombre): List~FactorDTO~
+    +darDeAlta(datos: FactorDTO): void
+    +modificar(datos: FactorDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+  class GestorPreguntas <<gestor>> {
+    +buscar(competencia, factor, nombre): List~PreguntaDTO~
+    +darDeAlta(datos: PreguntaDTO): void
+    +modificar(datos: PreguntaDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+    +generarConIA(competenciaId, factorId): PreguntaDTO
+  }
+  class GestorOpcionesRespuesta <<gestor>> {
+    +buscar(nombre): List~OpcionRespuestaDTO~
+    +darDeAlta(datos: OpcionRespuestaDTO): void
+    +modificar(datos: OpcionRespuestaDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+}
+
+package "DTOs de administración" {
+  enum TipoDocumento {
+    DNI
+    LE
+    LC
+    PP
+  }
+  enum TipoCompetencia {
+    TECNICA
+    ACTITUDINAL
+  }
+  class ResultadoImportacionDTO <<dto>> {
+    +creados: Integer
+    +actualizados: Integer
+    +eliminados: Integer
+  }
+  class CandidatoDTO <<dto>> {
+    +id: Long
+    +nroCandidato: Long
+    +apellido: String
+    +nombre: String
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+  }
+  class PuestoDTO <<dto>> {
+    +id: Long
+    +codigo: String
+    +nombre: String
+    +empresa: String
+    +descripcion: String
+  }
+  class CompetenciaRequeridaDTO <<dto>> {
+    +competenciaId: Long
+    +nombre: String
+    +ponderacionMinima: Double
+  }
+  PuestoDTO "1" *-- "1..*" CompetenciaRequeridaDTO : competencias
+  class CompetenciaDTO <<dto>> {
+    +id: Long
+    +codigo: String
+    +nombre: String
+    +tipo: TipoCompetencia
+    +descripcion: String
+  }
+  class FactorDTO <<dto>> {
+    +id: Long
+    +competenciaId: Long
+    +codigo: String
+    +nombre: String
+    +orden: Integer
+    +descripcion: String
+  }
+  class OpcionRespuestaDTO <<dto>> {
+    +id: Long
+    +nombre: String
+    +descripcion: String
+  }
+  class ItemOpcionDTO <<dto>> {
+    +id: Long
+    +orden: Integer
+    +descripcion: String
+  }
+  OpcionRespuestaDTO "1" *-- "2..*" ItemOpcionDTO : items
+  class PreguntaDTO <<dto>> {
+    +id: Long
+    +nombre: String
+    +enunciado: String
+    +descripcion: String
+    +competenciaId: Long
+    +factorId: Long
+    +opcionRespuestaId: Long
+    +ponderaciones: Map~Long, Double~
+  }
+}
+
+GestorCandidatos ..> CandidatoDTO
+GestorCandidatos ..> ResultadoImportacionDTO
+GestorPuestos ..> PuestoDTO
+GestorCompetencias ..> CompetenciaDTO
+GestorFactores ..> FactorDTO
+GestorPreguntas ..> PreguntaDTO
+GestorOpcionesRespuesta ..> OpcionRespuestaDTO
+
+note bottom of PreguntaDTO
+  itemOpcionId -> ponderacion
+end note
+
+@enduml

@@ -1,0 +1,583 @@
+@startuml
+title Sistema de evaluación de candidatos - Diagrama de clases con DTOs y DAOs
+
+top to bottom direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam nodesep 28
+skinparam ranksep 38
+skinparam class {
+  BackgroundColor #FFFDF7
+  BorderColor #4B5563
+  ArrowColor #4B5563
+}
+skinparam classBackgroundColor<<service>> #DCEEFF
+skinparam classBorderColor<<service>> #2563EB
+skinparam classBackgroundColor<<dto>> #EAF8E8
+skinparam classBorderColor<<dto>> #2F855A
+skinparam classBackgroundColor<<entity>> #FFF7D6
+skinparam classBorderColor<<entity>> #B7791F
+skinparam classBackgroundColor<<dao>> #F2E8FF
+skinparam classBorderColor<<dao>> #7E22CE
+skinparam classBackgroundColor<<daoImpl>> #F8F0FF
+skinparam classBorderColor<<daoImpl>> #9333EA
+skinparam classBackgroundColor<<enum>> #FDE8E8
+skinparam classBorderColor<<enum>> #C24141
+
+legend top right
+  |= Color |= Rol |
+  |<#DCEEFF> | Servicio de aplicación |
+  |<#EAF8E8> | DTO (entrada/salida) |
+  |<#FFF7D6> | Entidad de dominio |
+  |<#F2E8FF> | Contrato DAO |
+  |<#F8F0FF> | Implementación JDBC |
+endlegend
+
+package "Aplicación / casos de uso" as APP #EEF6FF {
+  class AuthService <<service>> {
+    +autenticarConsultor(login: LoginDTO): SesionDTO
+    +autenticarCandidato(login: LoginCandidatoDTO): SesionDTO
+  }
+
+  class PuestoService <<service>> {
+    +buscar(filtro: PuestoFiltroDTO): List~PuestoDTO~
+    +crear(datos: PuestoDTO): PuestoDTO
+    +modificar(id: Long, datos: PuestoDTO): PuestoDTO
+    +darDeBaja(id: Long, usuarioId: Long): void
+  }
+
+  class PreguntaService <<service>> {
+    +buscar(filtro: PreguntaFiltroDTO): List~PreguntaDTO~
+    +crear(datos: PreguntaDTO): PreguntaDTO
+    +modificar(id: Long, datos: PreguntaDTO): PreguntaDTO
+    +darDeBaja(id: Long, usuarioId: Long): void
+    +generarConIA(competenciaId: Long, factorId: Long): PreguntaDTO
+  }
+
+  class EvaluacionService <<service>> {
+    +buscarCandidatos(filtro: CandidatoFiltroDTO): List~CandidatoDTO~
+    +generarCuestionarios(solicitud: EvaluacionSolicitudDTO): ArchivoDTO
+  }
+
+  class CuestionarioService <<service>> {
+    +listarAsignados(candidatoId: Long): List~CuestionarioResumenDTO~
+    +obtenerDetalle(cuestionarioId: Long): CuestionarioDetalleDTO
+    +guardarRespuesta(datos: RespuestaDTO): void
+    +finalizarBloque(cuestionarioId: Long, bloqueId: Long): void
+    +finalizar(cuestionarioId: Long): void
+  }
+
+  class ReporteService <<service>> {
+    +comparativo(filtro: ReporteComparativoFiltroDTO): ReporteComparativoDTO
+    +ordenDeMerito(filtro: OrdenMeritoFiltroDTO): OrdenMeritoDTO
+    +exportarReporte(reporteId: String, formato: FormatoReporte): ArchivoDTO
+  }
+
+  interface GeneradorPreguntaIA {
+    +generar(competencia: Competencia, factor: Factor): PreguntaDTO
+  }
+}
+
+package "DTOs - frontera de la aplicación" as DTO #ECFDF3 {
+  class LoginDTO <<dto>> {
+    +usuario: String
+    +contrasena: String
+  }
+  class LoginCandidatoDTO <<dto>> {
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+    +clave: String
+  }
+  class SesionDTO <<dto>> {
+    +sujetoId: Long
+    +nombreMostrado: String
+    +rol: String
+    +token: String
+  }
+
+  class PuestoFiltroDTO <<dto>> {
+    +codigo: String
+    +nombre: String
+    +empresa: String
+  }
+  class PuestoDTO <<dto>> {
+    +id: Long
+    +codigo: String
+    +nombre: String
+    +empresa: String
+    +descripcion: String
+  }
+  class CompetenciaRequeridaDTO <<dto>> {
+    +competenciaId: Long
+    +competenciaNombre: String
+    +ponderacion: Decimal
+  }
+  PuestoDTO "1" *-- "1..*" CompetenciaRequeridaDTO : competencias
+
+  class PreguntaFiltroDTO <<dto>> {
+    +competencia: String
+    +factor: String
+    +nombre: String
+  }
+  class PreguntaDTO <<dto>> {
+    +id: Long
+    +nombre: String
+    +enunciado: String
+    +descripcion: String
+    +competenciaId: Long
+    +factorId: Long
+    +opcionRespuestaId: Long
+    +ponderaciones: Map~Long, Decimal~
+    +activa: Boolean
+  }
+  class OpcionRespuestaDTO <<dto>> {
+    +id: Long
+    +nombre: String
+    +descripcion: String
+  }
+  class ItemOpcionDTO <<dto>> {
+    +id: Long
+    +orden: Integer
+    +descripcion: String
+  }
+  OpcionRespuestaDTO "1" *-- "2..*" ItemOpcionDTO : items
+
+  class CandidatoFiltroDTO <<dto>> {
+    +apellido: String
+    +nombre: String
+    +nroCandidato: Long
+  }
+  class CandidatoDTO <<dto>> {
+    +id: Long
+    +nroCandidato: Long
+    +apellido: String
+    +nombre: String
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+    +email: String
+  }
+  class EvaluacionSolicitudDTO <<dto>> {
+    +candidatoIds: List~Long~
+    +puestoId: Long
+    +directorioDestino: String
+  }
+  class ArchivoDTO <<dto>> {
+    +nombre: String
+    +ruta: String
+    +tipoMime: String
+  }
+
+  class CuestionarioResumenDTO <<dto>> {
+    +id: Long
+    +puesto: String
+    +estado: EstadoCuestionario
+    +fechaGeneracion: DateTime
+  }
+  class CuestionarioDetalleDTO <<dto>> {
+    +id: Long
+    +puesto: String
+    +estado: EstadoCuestionario
+    +bloqueActual: Integer
+    +tiempoMaximoMinutos: Integer
+  }
+  class BloqueDTO <<dto>> {
+    +id: Long
+    +numero: Integer
+    +completado: Boolean
+  }
+  class PreguntaCuestionarioDTO <<dto>> {
+    +asignacionId: Long
+    +preguntaId: Long
+    +enunciado: String
+    +orden: Integer
+  }
+  class RespuestaDTO <<dto>> {
+    +asignacionId: Long
+    +opcionId: Long
+    +fechaHora: DateTime
+  }
+  CuestionarioDetalleDTO "1" *-- "1..*" BloqueDTO : bloques
+  BloqueDTO "1" *-- "1..*" PreguntaCuestionarioDTO : preguntas
+  PreguntaCuestionarioDTO "1" *-- "2..*" OpcionRespuestaDTO : opciones
+
+  class ReporteComparativoFiltroDTO <<dto>> {
+    +candidatoIds: List~Long~
+    +puestoId: Long
+  }
+  class ReporteComparativoDTO <<dto>> {
+    +reporteId: String
+    +puesto: String
+    +fechaEmision: DateTime
+  }
+  class LineaComparativaDTO <<dto>> {
+    +candidatoId: Long
+    +candidato: String
+    +competencia: String
+    +puntajeRequerido: Decimal
+    +puntajeObtenido: Decimal
+    +diferencia: Decimal
+  }
+  ReporteComparativoDTO "1" *-- "1..*" LineaComparativaDTO : lineas
+
+  class OrdenMeritoFiltroDTO <<dto>> {
+    +puestoId: Long
+    +evaluacionIds: List~Long~
+  }
+  class OrdenMeritoDTO <<dto>> {
+    +reporteId: String
+    +puesto: String
+    +fechaEmision: DateTime
+  }
+  class LineaOrdenMeritoDTO <<dto>> {
+    +posicion: Integer
+    +candidatoId: Long
+    +apellido: String
+    +nombre: String
+    +puntajeTotal: Decimal
+    +estado: EstadoCuestionario
+  }
+  OrdenMeritoDTO "1" *-- "1..*" LineaOrdenMeritoDTO : posiciones
+}
+
+APP ..> DTO : recibe / devuelve
+
+package "Dominio" as DOMAIN #FFFBEA {
+  class UsuarioConsultor <<entity>> {
+    -id: Long
+    -usuario: String
+    -nombre: String
+    -apellido: String
+    -passwordHash: String
+    -activo: Boolean
+    +validarContrasena(valor: String): Boolean
+  }
+
+  class Candidato <<entity>> {
+    -id: Long
+    -nroCandidato: Long
+    -apellido: String
+    -nombre: String
+    -tipoDocumento: TipoDocumento
+    -nroDocumento: String
+    -fechaNacimiento: Date
+    -genero: String
+    -nacionalidad: String
+    -email: String
+    -escolaridad: String
+    -eliminado: Boolean
+  }
+  class CredencialCandidato <<entity>> {
+    -id: Long
+    -claveHash: String
+    -activa: Boolean
+    -fechaExpiracion: DateTime
+    +validarClave(valor: String): Boolean
+  }
+  Candidato "1" *-- "0..1" CredencialCandidato : credencial
+
+  class Puesto <<entity>> {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -empresa: String
+    -descripcion: String
+    -eliminado: Boolean
+    +agregarCompetencia(comp: Competencia, ponderacion: Decimal): void
+    +quitarCompetencia(competenciaId: Long): void
+  }
+  class CompetenciaRequerida <<entity>> {
+    -id: Long
+    -ponderacion: Decimal
+    +validarRango(): Boolean
+  }
+  class Competencia <<entity>> {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -descripcion: String
+    -tipo: TipoCompetencia
+    -eliminada: Boolean
+  }
+  class Factor <<entity>> {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -orden: Integer
+    -descripcion: String
+    -eliminado: Boolean
+  }
+  Puesto "1" *-- "1..*" CompetenciaRequerida : requiere
+  CompetenciaRequerida "0..*" --> "1" Competencia : competencia
+  Competencia "1" *-- "1..*" Factor : factores
+
+  class Pregunta <<entity>> {
+    -id: Long
+    -nombre: String
+    -enunciado: String
+    -descripcion: String
+    -activa: Boolean
+    -eliminada: Boolean
+    +validarPuntajeTotal(totalEsperado: Decimal = 10): Boolean
+  }
+  class OpcionRespuesta <<entity>> {
+    -id: Long
+    -nombre: String
+    -descripcion: String
+    -eliminada: Boolean
+  }
+  class ItemOpcion <<entity>> {
+    -id: Long
+    -orden: Integer
+    -descripcion: String
+  }
+  class PreguntaItemOpcion <<entity>> {
+    -ponderacion: Decimal
+  }
+  Factor "1" <-- "0..*" Pregunta : evalua
+  Pregunta "0..*" --> "1" OpcionRespuesta : usa
+  OpcionRespuesta "1" *-- "2..*" ItemOpcion : items
+  Pregunta "1" *-- "2..*" PreguntaItemOpcion : pondera
+  PreguntaItemOpcion "0..*" --> "1" ItemOpcion
+
+  class Evaluacion <<entity>> {
+    -id: Long
+    -fechaCreacion: DateTime
+    -versionModelo: String
+    -nombreArchivoExcel: String
+  }
+
+  class Cuestionario <<entity>> {
+    -id: Long
+    -estado: EstadoCuestionario
+    -fechaGeneracion: DateTime
+    -fechaInicio: DateTime
+    -fechaFin: DateTime
+    -fechaCambioEstado: DateTime
+    -ultimoIngreso: DateTime
+    -intentosPermitidos: Integer
+    -cantidadAccesos: Integer
+    -tiempoMaximoMinutos: Integer
+    +iniciar(): void
+    +finalizar(): void
+    +calcularResultados(): void
+  }
+  class BloqueCuestionario <<entity>> {
+    -id: Long
+    -numero: Integer
+    -completado: Boolean
+    +estaCompleto(): Boolean
+  }
+  class PreguntaAsignada <<entity>> {
+    -id: Long
+    -orden: Integer
+    -enunciadoSnapshot: String
+  }
+  class OpcionAsignada <<entity>> {
+    -id: Long
+    -textoSnapshot: String
+    -puntajeSnapshot: Decimal
+    -orden: Integer
+  }
+  class RespuestaCandidato <<entity>> {
+    -id: Long
+    -fechaHora: DateTime
+  }
+  class ResultadoCompetencia <<entity>> {
+    -id: Long
+    -puntajeObtenido: Decimal
+  }
+  class ResultadoFactor <<entity>> {
+    -id: Long
+    -puntajeObtenido: Decimal
+  }
+  Candidato "1" <-- "0..*" Cuestionario : pertenece a
+  Puesto "1" <-- "0..*" Evaluacion : corresponde a
+  Evaluacion "1" *-- "1..*" Cuestionario : genera
+  Cuestionario "1" *-- "1..*" BloqueCuestionario : bloques
+  BloqueCuestionario "1" *-- "1..*" PreguntaAsignada : preguntas
+  PreguntaAsignada "0..*" --> "1" Pregunta : origen
+  PreguntaAsignada "1" *-- "2..*" OpcionAsignada : opciones
+  OpcionAsignada "0..*" --> "1" ItemOpcion : origen
+  PreguntaAsignada "1" *-- "0..1" RespuestaCandidato : respuesta
+  RespuestaCandidato "0..*" --> "1" OpcionAsignada : opcion elegida
+  Cuestionario "1" *-- "0..*" ResultadoCompetencia : resultados
+  ResultadoCompetencia "0..*" --> "1" Competencia
+  ResultadoCompetencia "1" *-- "1..*" ResultadoFactor : detalle
+  ResultadoFactor "0..*" --> "1" Factor
+
+  class RegistroAuditoria <<entity>> {
+    -id: Long
+    -fechaHora: DateTime
+    -accion: String
+    -entidad: String
+    -entidadId: Long
+    -detalle: String
+  }
+  UsuarioConsultor "0..1" <-- "0..*" RegistroAuditoria : ejecutada por
+
+  enum TipoDocumento <<enum>> {
+    DNI
+    LE
+    LC
+    PP
+  }
+  enum TipoCompetencia <<enum>> {
+    TECNICA
+    ACTITUDINAL
+  }
+  enum EstadoCuestionario <<enum>> {
+    ACTIVO
+    EN_PROCESO
+    COMPLETO
+    INCOMPLETO
+    SIN_CONTESTAR
+  }
+  enum FormatoReporte <<enum>> {
+    PDF
+    XLSX
+  }
+  Candidato ..> TipoDocumento
+  Competencia ..> TipoCompetencia
+  Cuestionario ..> EstadoCuestionario
+}
+
+package "Persistencia - contratos DAO" as DAO #F7F0FF {
+  interface UsuarioDAO <<dao>> {
+    +buscarPorUsuario(usuario: String): Optional~UsuarioConsultor~
+  }
+  interface CandidatoDAO <<dao>> {
+    +buscar(apellido: String, nombre: String, nroCandidato: Long): List~Candidato~
+    +buscarPorId(id: Long): Optional~Candidato~
+    +guardar(candidato: Candidato): Candidato
+  }
+  interface PuestoDAO <<dao>> {
+    +buscar(codigo: String, nombre: String, empresa: String): List~Puesto~
+    +buscarPorId(id: Long): Optional~Puesto~
+    +existeCodigoONombre(codigo: String, nombre: String): Boolean
+    +guardar(puesto: Puesto): Puesto
+    +actualizar(puesto: Puesto): void
+  }
+  interface CompetenciaDAO <<dao>> {
+    +buscarPorId(id: Long): Optional~Competencia~
+    +listarActivas(): List~Competencia~
+  }
+  interface PreguntaDAO <<dao>> {
+    +buscar(competencia: String, factor: String, nombre: String): List~Pregunta~
+    +buscarPorId(id: Long): Optional~Pregunta~
+    +existeNombre(nombre: String): Boolean
+    +guardar(pregunta: Pregunta): Pregunta
+    +actualizar(pregunta: Pregunta): void
+  }
+  interface CuestionarioDAO <<dao>> {
+    +buscarPorId(id: Long): Optional~Cuestionario~
+    +listarPorCandidato(candidatoId: Long): List~Cuestionario~
+    +existeActivo(candidatoId: Long): Boolean
+    +guardar(cuestionario: Cuestionario): Cuestionario
+    +actualizar(cuestionario: Cuestionario): void
+  }
+  interface AuditoriaDAO <<dao>> {
+    +guardar(registro: RegistroAuditoria): void
+  }
+  interface EvaluacionDAO <<dao>> {
+    +buscarPorId(id: Long): Optional~Evaluacion~
+    +buscarPorPuesto(puestoId: Long): List~Evaluacion~
+    +guardar(evaluacion: Evaluacion): Evaluacion
+  }
+}
+
+package "Persistencia - implementaciones JDBC" as JDBC #FBF7FF {
+  class UsuarioDAOImpl <<daoImpl>>
+  class CandidatoDAOImpl <<daoImpl>>
+  class PuestoDAOImpl <<daoImpl>>
+  class CompetenciaDAOImpl <<daoImpl>>
+  class PreguntaDAOImpl <<daoImpl>>
+  class CuestionarioDAOImpl <<daoImpl>>
+  class AuditoriaDAOImpl <<daoImpl>>
+  class EvaluacionDAOImpl <<daoImpl>>
+
+  class DataSource <<external>> {
+    +getConnection(): Connection
+  }
+
+  UsuarioDAOImpl ..|> UsuarioDAO
+  CandidatoDAOImpl ..|> CandidatoDAO
+  PuestoDAOImpl ..|> PuestoDAO
+  CompetenciaDAOImpl ..|> CompetenciaDAO
+  PreguntaDAOImpl ..|> PreguntaDAO
+  CuestionarioDAOImpl ..|> CuestionarioDAO
+  AuditoriaDAOImpl ..|> AuditoriaDAO
+  EvaluacionDAOImpl ..|> EvaluacionDAO
+
+  UsuarioDAOImpl --> DataSource
+  CandidatoDAOImpl --> DataSource
+  PuestoDAOImpl --> DataSource
+  CompetenciaDAOImpl --> DataSource
+  PreguntaDAOImpl --> DataSource
+  CuestionarioDAOImpl --> DataSource
+  AuditoriaDAOImpl --> DataSource
+  EvaluacionDAOImpl --> DataSource
+}
+
+' Dependencias de servicios hacia contratos, nunca hacia implementaciones
+AuthService ..> UsuarioDAO
+AuthService ..> CandidatoDAO
+PuestoService ..> PuestoDAO
+PuestoService ..> CompetenciaDAO
+PuestoService ..> AuditoriaDAO
+PreguntaService ..> PreguntaDAO
+PreguntaService ..> CompetenciaDAO
+PreguntaService ..> AuditoriaDAO
+PreguntaService ..> GeneradorPreguntaIA
+EvaluacionService ..> CandidatoDAO
+EvaluacionService ..> PuestoDAO
+EvaluacionService ..> PreguntaDAO
+EvaluacionService ..> CuestionarioDAO
+EvaluacionService ..> EvaluacionDAO
+CuestionarioService ..> CuestionarioDAO
+ReporteService ..> CuestionarioDAO
+ReporteService ..> PuestoDAO
+ReporteService ..> CandidatoDAO
+
+' Los DAO persisten entidades; los DTO no entran al dominio
+UsuarioDAO ..> UsuarioConsultor
+CandidatoDAO ..> Candidato
+PuestoDAO ..> Puesto
+CompetenciaDAO ..> Competencia
+PreguntaDAO ..> Pregunta
+CuestionarioDAO ..> Cuestionario
+AuditoriaDAO ..> RegistroAuditoria
+EvaluacionDAO ..> Evaluacion
+
+note right of Puesto
+  Reglas corregidas:
+  - codigo y nombre unicos (restriccion en BD)
+  - baja logica si tiene evaluaciones asociadas
+  - ponderacion de cada competencia: 0..10
+end note
+
+note right of Pregunta
+  La consigna carga respuesta + puntaje directamente.
+  Por eso se elimina GrupoOpciones/ItemOpcion y cada
+  Pregunta compone sus propias OpcionRespuesta.
+  La suma de puntajes debe ser exactamente 10.
+end note
+
+note right of Cuestionario
+  Las preguntas y opciones asignadas guardan snapshots
+  de texto y puntaje para que una edicion futura del banco
+  no altere cuestionarios ya generados.
+end note
+
+note bottom of DAO
+  Los servicios dependen de interfaces DAO.
+  Las implementaciones JDBC encapsulan SQL, mapeo y transacciones.
+  Los DTO solo cruzan la frontera de aplicacion; los DAO trabajan con entidades.
+end note
+
+@enduml

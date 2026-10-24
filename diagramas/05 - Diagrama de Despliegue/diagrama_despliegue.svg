@@ -1,0 +1,258 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 920" width="100%" height="100%" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <style>
+      .bg { fill: #F8FAFC; }
+      .title { font-size: 24px; font-weight: bold; fill: #0F294A; }
+      .subtitle { font-size: 14px; fill: #475569; }
+      .shadow-3d { fill: #CBD9EA; }
+      .shadow-env { fill: #DCE8F5; }
+      .device-box { fill: #FFFFFF; stroke: #1B365D; stroke-width: 2.2; }
+      .env-box { fill: #EBF3FA; stroke: #4A77A8; stroke-width: 1.6; }
+      .artifact-box { fill: #FFFDF9; stroke: #D9822B; stroke-width: 1.8; }
+      .note-box { fill: #F1F5F9; stroke: #94A3B8; stroke-width: 1.5; stroke-dasharray: 4 2; }
+      .stereo-device { font-size: 13px; fill: #4A77A8; font-style: italic; }
+      .stereo-env { font-size: 12px; fill: #3B6998; font-style: italic; }
+      .stereo-art { font-size: 12px; fill: #C06C1A; font-style: italic; }
+      .node-title { font-size: 17px; font-weight: bold; fill: #0F294A; }
+      .env-title { font-size: 15px; font-weight: bold; fill: #0F294A; }
+      .art-title { font-size: 14px; font-weight: bold; fill: #1E293B; }
+      .art-sub { font-size: 12px; fill: #475569; }
+      .comm-line { stroke: #1B365D; stroke-width: 2.2; fill: none; }
+      .comm-proto { font-size: 13px; font-weight: bold; fill: #1B365D; text-anchor: middle; }
+      .comm-cu { font-size: 11px; fill: #475569; text-anchor: middle; }
+      .comm-mult { font-size: 13px; font-weight: bold; fill: #334155; text-anchor: middle; }
+      .note-title { font-size: 14px; font-weight: bold; fill: #0F294A; }
+      .note-text { font-size: 12.5px; fill: #334155; }
+      .link-text { font-size: 12px; fill: #1E40AF; font-weight: bold; text-decoration: underline; }
+    </style>
+  </defs>
+
+  <!-- Fondo general -->
+  <rect width="1560" height="920" class="bg"/>
+
+  <!-- Encabezado -->
+  <text x="50" y="42" class="title">Capit@l Humano · Diagrama de Despliegue (Descriptor)</text>
+  <text x="50" y="65" class="subtitle">UTN FRSF · Diseño de Sistemas 2026 · Etapa 6 · Repositorio: https://github.com/Cutro2K/gestor-recursos-humanos</text>
+
+  <!-- ================================================================= -->
+  <!-- COLUMNA IZQUIERDA: IMPRESORA, PC CONSULTOR, SISTEMA CV, PC CANDIDATO -->
+  <!-- ================================================================= -->
+
+  <!-- 1. Nodo: Impresora -->
+  <rect x="60" y="82" width="330" height="82" class="shadow-3d"/>
+  <rect x="50" y="90" width="330" height="82" class="device-box"/>
+  <text x="68" y="114" class="stereo-device">«device»</text>
+  <text x="68" y="138" class="node-title">Impresora</text>
+  <text x="68" y="156" class="art-sub">Impresión de Reporte Comparativo y Orden de Mérito</text>
+
+  <!-- Camino: PC del Consultor <-> Impresora -->
+  <line x1="215" y1="172" x2="215" y2="235" class="comm-line"/>
+  <text x="197" y="190" class="comm-mult">1</text>
+  <text x="195" y="227" class="comm-mult">1..*</text>
+  <text x="295" y="202" class="comm-proto">«IPP / TCP/IP»</text>
+  <text x="295" y="218" class="comm-cu">(CU027, CU028)</text>
+
+  <!-- 2. Nodo: PC del Consultor -->
+  <rect x="60" y="227" width="330" height="215" class="shadow-3d"/>
+  <rect x="50" y="235" width="330" height="215" class="device-box"/>
+  <text x="68" y="260" class="stereo-device">«device»</text>
+  <text x="68" y="283" class="node-title">PC del Consultor</text>
+
+  <!-- Entorno: Navegador web (Consultor) -->
+  <rect x="74" y="294" width="290" height="138" class="shadow-env"/>
+  <rect x="68" y="300" width="290" height="138" class="env-box"/>
+  <text x="84" y="322" class="stereo-env">«executionEnvironment»</text>
+  <text x="84" y="343" class="env-title">Navegador web</text>
+
+  <!-- Artefacto: Cliente Next.js (Consultor) -->
+  <rect x="84" y="356" width="258" height="68" class="artifact-box"/>
+  <text x="98" y="376" class="stereo-art">«artifact»</text>
+  <text x="98" y="396" class="art-title">frontend-client.js</text>
+  <text x="98" y="413" class="art-sub">Bundle React / Next.js / TypeScript</text>
+
+  <!-- Camino: PC del Consultor <-> Sistema de Gestión de Candidatos y CV -->
+  <line x1="215" y1="450" x2="215" y2="515" class="comm-line"/>
+  <text x="195" y="468" class="comm-mult">1..*</text>
+  <text x="197" y="507" class="comm-mult">1</text>
+  <text x="298" y="480" class="comm-proto">«CSV / SMB»</text>
+  <text x="298" y="496" class="comm-cu">(CU006, CU007)</text>
+
+  <!-- 3. Nodo: Sistema de Gestión de Candidatos y CV -->
+  <rect x="60" y="507" width="330" height="90" class="shadow-3d"/>
+  <rect x="50" y="515" width="330" height="90" class="device-box"/>
+  <text x="68" y="538" class="stereo-device">«device»</text>
+  <text x="68" y="560" class="node-title">Sistema de Gestión de</text>
+  <text x="68" y="580" class="node-title">Candidatos y CV</text>
+  <text x="68" y="596" class="art-sub">Intercambio de lotes CSV de candidatos y resultados</text>
+
+  <!-- 4. Nodo: PC del Candidato -->
+  <rect x="60" y="637" width="330" height="215" class="shadow-3d"/>
+  <rect x="50" y="645" width="330" height="215" class="device-box"/>
+  <text x="68" y="670" class="stereo-device">«device»</text>
+  <text x="68" y="693" class="node-title">PC del Candidato</text>
+
+  <!-- Entorno: Navegador web (Candidato) -->
+  <rect x="74" y="704" width="290" height="138" class="shadow-env"/>
+  <rect x="68" y="710" width="290" height="138" class="env-box"/>
+  <text x="84" y="732" class="stereo-env">«executionEnvironment»</text>
+  <text x="84" y="753" class="env-title">Navegador web</text>
+
+  <!-- Artefacto: Cliente Next.js (Candidato) -->
+  <rect x="84" y="766" width="258" height="68" class="artifact-box"/>
+  <text x="98" y="786" class="stereo-art">«artifact»</text>
+  <text x="98" y="806" class="art-title">frontend-client.js</text>
+  <text x="98" y="823" class="art-sub">Wizard Cuestionario (Next.js / React / TS)</text>
+
+
+  <!-- ================================================================= -->
+  <!-- CAMINOS DE COMUNICACIÓN CLIENTES <-> SERVIDOR DE APLICACIONES     -->
+  <!-- ================================================================= -->
+
+  <!-- Línea PC Consultor -> Servidor de aplicaciones -->
+  <line x1="380" y1="342" x2="540" y2="342" class="comm-line"/>
+  <text x="460" y="320" class="comm-proto">«HTTP / HTTPS»</text>
+  <text x="460" y="335" class="comm-cu">(Next.js UI / REST JSON)</text>
+  <text x="402" y="360" class="comm-mult">1..*</text>
+  <text x="525" y="360" class="comm-mult">1</text>
+
+  <!-- Línea PC Candidato -> Servidor de aplicaciones -->
+  <polyline points="380,752 460,752 460,555 540,555" class="comm-line"/>
+  <text x="455" y="732" class="comm-proto">«HTTP / HTTPS»</text>
+  <text x="455" y="746" class="comm-cu">(CU001, CU026)</text>
+  <text x="402" y="770" class="comm-mult">1..*</text>
+  <text x="525" y="573" class="comm-mult">1</text>
+
+
+  <!-- ================================================================= -->
+  <!-- COLUMNA CENTRAL: LDAP, SERVIDOR DE APLICACIONES, SERVICIO DE IA   -->
+  <!-- ================================================================= -->
+
+  <!-- 5. Nodo externo: Servidor LDAP de la organización -->
+  <rect x="550" y="82" width="430" height="82" class="shadow-3d"/>
+  <rect x="540" y="90" width="430" height="82" class="device-box"/>
+  <text x="558" y="114" class="stereo-device">«device»</text>
+  <text x="558" y="138" class="node-title">Servidor LDAP de la organización</text>
+  <text x="558" y="156" class="art-sub">Validación de credenciales de Consultor (CU001)</text>
+
+  <!-- Camino: Servidor de aplicaciones <-> Servidor LDAP -->
+  <line x1="755" y1="172" x2="755" y2="225" class="comm-line"/>
+  <text x="738" y="190" class="comm-mult">1</text>
+  <text x="738" y="218" class="comm-mult">1</text>
+  <text x="825" y="198" class="comm-proto">«LDAP / LDAPS»</text>
+  <text x="825" y="213" class="comm-cu">(CU001)</text>
+
+  <!-- 6. Nodo central: Servidor de aplicaciones -->
+  <rect x="550" y="217" width="430" height="465" class="shadow-3d"/>
+  <rect x="540" y="225" width="430" height="465" class="device-box"/>
+  <text x="558" y="250" class="stereo-device">«device»</text>
+  <text x="558" y="273" class="node-title">Servidor de aplicaciones</text>
+
+  <!-- Entorno 1 en Servidor de aplicaciones: Node.js (Next.js) -->
+  <rect x="566" y="284" width="386" height="135" class="shadow-env"/>
+  <rect x="560" y="290" width="386" height="135" class="env-box"/>
+  <text x="576" y="311" class="stereo-env">«executionEnvironment»</text>
+  <text x="576" y="331" class="env-title">Node.js (Next.js Server :3000)</text>
+
+  <!-- Artefacto Next.js -->
+  <rect x="576" y="343" width="354" height="68" class="artifact-box"/>
+  <text x="592" y="362" class="stereo-art">«artifact»</text>
+  <text x="592" y="381" class="art-title">frontend (Next.js App Router)</text>
+  <text x="592" y="398" class="art-sub">Rutas en src/app/, components/, service/ y types/</text>
+
+  <!-- Comunicación interna Next.js <-> Spring Boot API REST -->
+  <line x1="753" y1="425" x2="753" y2="462" class="comm-line"/>
+  <text x="736" y="441" class="comm-mult">1</text>
+  <text x="736" y="458" class="comm-mult">1</text>
+  <text x="838" y="448" class="comm-proto">«HTTP / REST (JSON)»</text>
+
+  <!-- Entorno 2 en Servidor de aplicaciones: JVM 25 / Spring Boot -->
+  <rect x="566" y="456" width="386" height="214" class="shadow-env"/>
+  <rect x="560" y="462" width="386" height="214" class="env-box"/>
+  <text x="576" y="483" class="stereo-env">«executionEnvironment»</text>
+  <text x="576" y="503" class="env-title">JVM 25 · Spring Boot 4 (Tomcat embebido :8080)</text>
+
+  <!-- Artefacto 1: API REST JAR -->
+  <rect x="576" y="515" width="354" height="72" class="artifact-box"/>
+  <text x="592" y="534" class="stereo-art">«artifact»</text>
+  <text x="592" y="553" class="art-title">api.jar (com.deso.api)</text>
+  <text x="592" y="571" class="art-sub">controller, service (Gestores), dto, model, dao y exception</text>
+
+  <!-- Artefacto 2: Configuración -->
+  <rect x="576" y="597" width="354" height="64" class="artifact-box"/>
+  <text x="592" y="616" class="stereo-art">«artifact»</text>
+  <text x="592" y="635" class="art-title">application.properties</text>
+  <text x="592" y="652" class="art-sub">Configuración JPA y variables (DB_URL, DB_USERNAME, DB_PASSWORD)</text>
+
+  <!-- Camino: Servidor de aplicaciones <-> Servicio de IA -->
+  <line x1="755" y1="690" x2="755" y2="750" class="comm-line"/>
+  <text x="738" y="708" class="comm-mult">1</text>
+  <text x="738" y="742" class="comm-mult">1</text>
+  <text x="848" y="718" class="comm-proto">«HTTPS / REST (JSON)»</text>
+  <text x="848" y="733" class="comm-cu">(CU009, CU021, CU033)</text>
+
+  <!-- 7. Nodo externo: Servicio de IA -->
+  <rect x="550" y="742" width="430" height="110" class="shadow-3d"/>
+  <rect x="540" y="750" width="430" height="110" class="device-box"/>
+  <text x="558" y="774" class="stereo-device">«device»</text>
+  <text x="558" y="797" class="node-title">Servicio de IA</text>
+  <rect x="560" y="807" width="386" height="42" class="env-box"/>
+  <text x="574" y="824" class="stereo-env">«executionEnvironment»</text>
+  <text x="720" y="825" class="env-title">API GenAI (LLM)</text>
+  <text x="574" y="841" class="art-sub">Generación asistida de puestos y preguntas (CU033)</text>
+
+
+  <!-- ================================================================= -->
+  <!-- CAMINO DE COMUNICACIÓN SERVIDOR DE APLICACIONES <-> SERVIDOR BD   -->
+  <!-- ================================================================= -->
+  <line x1="970" y1="455" x2="1120" y2="455" class="comm-line"/>
+  <text x="1045" y="438" class="comm-proto">«JDBC»</text>
+  <text x="1045" y="451" class="comm-cu">(TCP/IP : 5432)</text>
+  <text x="988" y="475" class="comm-mult">1</text>
+  <text x="1102" y="475" class="comm-mult">1</text>
+
+
+  <!-- ================================================================= -->
+  <!-- COLUMNA DERECHA: SERVIDOR DE BD Y NOTAS DE TRAZABILIDAD           -->
+  <!-- ================================================================= -->
+
+  <!-- 8. Nodo: Servidor de BD -->
+  <rect x="1130" y="292" width="380" height="295" class="shadow-3d"/>
+  <rect x="1120" y="300" width="380" height="295" class="device-box"/>
+  <text x="1138" y="325" class="stereo-device">«device»</text>
+  <text x="1138" y="348" class="node-title">Servidor de BD</text>
+
+  <!-- Entorno: PostgreSQL -->
+  <rect x="1146" y="361" width="336" height="218" class="shadow-env"/>
+  <rect x="1140" y="367" width="336" height="218" class="env-box"/>
+  <text x="1156" y="389" class="stereo-env">«executionEnvironment»</text>
+  <text x="1156" y="410" class="env-title">PostgreSQL (:5432 - deso_db)</text>
+
+  <!-- Artefacto 1: 01-schema.sql -->
+  <rect x="1156" y="423" width="304" height="72" class="artifact-box"/>
+  <text x="1172" y="442" class="stereo-art">«artifact»</text>
+  <text x="1172" y="461" class="art-title">db/01-schema.sql</text>
+  <text x="1172" y="479" class="art-sub">Script DDL de creación de tablas del DER</text>
+
+  <!-- Artefacto 2: 02-data.sql -->
+  <rect x="1156" y="503" width="304" height="70" class="artifact-box"/>
+  <text x="1172" y="522" class="stereo-art">«artifact»</text>
+  <text x="1172" y="541" class="art-title">db/02-data.sql</text>
+  <text x="1172" y="559" class="art-sub">Script DML de seed (datos iniciales para CUs)</text>
+
+  <!-- Cuadro de Referencias / Manifestación de Componentes -->
+  <rect x="1120" y="610" width="380" height="250" rx="6" class="note-box"/>
+  <text x="1138" y="636" class="note-title">Trazabilidad - Diseño de Sistemas</text>
+  <text x="1138" y="658" class="note-text">• Frontend Web (Next.js :3000):</text>
+  <text x="1150" y="674" class="art-sub">Pantallas (Boundary) de Consultor y Candidato.</text>
+  <text x="1138" y="694" class="note-text">• Backend REST (Spring Boot :8080):</text>
+  <text x="1150" y="710" class="art-sub">Manifiesta Gestores (Control), Dominio (Entity),</text>
+  <text x="1150" y="726" class="art-sub">DTOs y DAOs con acceso a PostgreSQL deso_db.</text>
+  <text x="1138" y="748" class="note-text">• Repositorio oficial de implementación:</text>
+  <a href="https://github.com/Cutro2K/gestor-recursos-humanos" target="_blank">
+    <text x="1150" y="768" class="link-text">github.com/Cutro2K/gestor-recursos-humanos</text>
+  </a>
+  <text x="1138" y="792" class="note-text">• Sistemas externos integrados:</text>
+  <text x="1150" y="808" class="art-sub">- Servidor LDAP (CU001 Autenticar usuario)</text>
+  <text x="1150" y="824" class="art-sub">- Sistema Candidatos y CV (CU006 / CU007 CSV)</text>
+  <text x="1150" y="840" class="art-sub">- Servicio de IA (CU009, CU021, CU033 GenAI)</text>
+</svg>

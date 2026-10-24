@@ -1,0 +1,118 @@
+@startuml
+title TP Diseño de Sistemas 2026 - Capit@l Humano\nDiagrama de Despliegue (Descriptor)\nRepo de implementación: https://github.com/Cutro2K/gestor-recursos-humanos
+
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing true
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam nodesep 45
+skinparam ranksep 65
+
+skinparam node {
+  BackgroundColor<<device>> #FFFFFF
+  BorderColor<<device>> #1B365D
+  BorderThickness<<device>> 2
+  FontColor<<device>> #1B365D
+  BackgroundColor<<executionEnvironment>> #EBF3FA
+  BorderColor<<executionEnvironment>> #4A77A8
+  BorderThickness<<executionEnvironment>> 1.5
+  FontColor<<executionEnvironment>> #1B365D
+}
+
+skinparam artifact {
+  BackgroundColor #FFFDF9
+  BorderColor #D9822B
+  BorderThickness 1.5
+  FontColor #1B365D
+}
+
+skinparam arrow {
+  Color #1B365D
+  FontColor #1B365D
+  FontSize 11
+  Thickness 1.5
+}
+
+' ==========================================
+' CAPA CLIENTE (Dispositivos de Usuario)
+' ==========================================
+node "PC del Consultor" <<device>> as PCConsultor {
+  node "Navegador Web" <<executionEnvironment>> as NavConsultor {
+    artifact "frontend-client.js\n(React / Next.js / TypeScript)" <<artifact>> as AppClienteConsultor
+  }
+}
+
+node "PC del Candidato" <<device>> as PCCandidato {
+  node "Navegador Web" <<executionEnvironment>> as NavCandidato {
+    artifact "frontend-client.js\n(React / Next.js / TypeScript)" <<artifact>> as AppClienteCandidato
+  }
+}
+
+node "Impresora" <<device>> as Impresora
+
+' ==========================================
+' CAPA DE APLICACIÓN (Frontend Next.js + Backend Spring Boot API REST)
+' ==========================================
+node "Servidor de Aplicaciones" <<device>> as ServidorApp {
+  node "Node.js (Next.js Server :3000)" <<executionEnvironment>> as NodeEnv {
+    artifact "frontend\n(Next.js App Router: src/app, components, service)" <<artifact>> as NextArtifact
+  }
+
+  node "JVM 25 · Spring Boot 4 (Tomcat embebido :8080)" <<executionEnvironment>> as JVMEnv {
+    artifact "api.jar (com.deso.api)\n(controller, service, dto, model, dao, exception)" <<artifact>> as ApiJar
+    artifact "application.properties\n(DB_URL, DB_USERNAME, DB_PASSWORD, JPA)" <<artifact>> as ConfigProps
+  }
+}
+
+' ==========================================
+' CAPA DE DATOS (Base de Datos Relacional)
+' ==========================================
+node "Servidor de BD" <<device>> as ServidorBD {
+  node "PostgreSQL (:5432 - deso_db)" <<executionEnvironment>> as PostgresEnv {
+    artifact "db/01-schema.sql" <<artifact>> as EsquemaSQL
+    artifact "db/02-data.sql (Seed)" <<artifact>> as DatosSQL
+  }
+}
+
+' ==========================================
+' NODOS / SISTEMAS EXTERNOS
+' ==========================================
+node "Servidor LDAP de la Organización" <<device>> as ServidorLDAP {
+  node "OpenLDAP / Active Directory" <<executionEnvironment>> as LDAPEnv
+}
+
+node "Servicio de IA" <<device>> as ServicioIA {
+  node "API GenAI (LLM)" <<executionEnvironment>> as IAEnv
+}
+
+node "Sistema de Gestión de Candidatos y CV" <<device>> as SistemaCV
+
+' ==========================================
+' CAMINOS DE COMUNICACIÓN
+' ==========================================
+PCConsultor "1..*" -- "1" ServidorApp : "«HTTP/HTTPS · REST (JSON)»"
+PCCandidato "1..*" -- "1" ServidorApp : "«HTTP/HTTPS · REST (JSON)»"
+PCConsultor "1..*" -- "1" Impresora : "«IPP / TCP/IP»\n(CU027, CU028)"
+PCConsultor "1..*" -- "1" SistemaCV : "«CSV / SMB»\n(CU006, CU007)"
+
+NodeEnv "1" -- "1" JVMEnv : "«HTTP / REST (JSON)»"
+
+ServidorApp "1" -- "1" ServidorBD : "«JDBC (TCP/IP :5432)»"
+ServidorApp "1" -- "1" ServidorLDAP : "«LDAP / LDAPS»\n(CU001)"
+ServidorApp "1" -- "1" ServicioIA : "«HTTPS / REST (JSON)»\n(CU009, CU021, CU033)"
+
+note bottom of ServidorApp
+  <b>api.jar (com.deso.api)</b> manifiesta los paquetes del Diagrama de Clases:
+  • Controladores REST y Gestores de Casos de Uso
+  • Capa de Modelo de Dominio y DAOs
+  • Repositorio: https://github.com/Cutro2K/gestor-recursos-humanos
+end note
+
+note bottom of ServidorBD
+  <b>deso_db (PostgreSQL)</b> se inicializa con:
+  • db/01-schema.sql (Tablas del DER)
+  • db/02-data.sql (Datos de prueba para los CUs)
+end note
+
+@enduml

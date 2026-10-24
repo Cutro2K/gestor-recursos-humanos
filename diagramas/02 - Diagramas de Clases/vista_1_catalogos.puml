@@ -1,0 +1,117 @@
+@startuml
+title Vista 1 - Puestos, competencias, preguntas y opciones
+
+left to right direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam classBackgroundColor #FFF4CC
+skinparam classBorderColor #C89520
+skinparam classBackgroundColor<<enum>> #FFE2E2
+skinparam classBorderColor<<enum>> #C75B5B
+
+package "Puestos y competencias" {
+  class Puesto {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -empresa: String
+    -descripcion: String
+    -eliminado: Boolean
+    +agregarCompetencia(competencia: Competencia, ponderacion: Double): void
+    +quitarCompetencia(competenciaId: Long): void
+  }
+
+  class CompetenciaRequerida {
+    -ponderacionMinima: Double
+    +validarRango(): Boolean
+  }
+
+  class Competencia {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -descripcion: String
+    -tipo: TipoCompetencia
+    -eliminada: Boolean
+    +puedeEvaluarse(): Boolean
+  }
+
+  class Factor {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -orden: Integer
+    -descripcion: String
+    -eliminado: Boolean
+  }
+
+  enum TipoCompetencia <<enum>> {
+    TECNICA
+    ACTITUDINAL
+  }
+
+  Puesto "1" *-- "1..*" CompetenciaRequerida : solicita
+  CompetenciaRequerida "0..*" --> "1" Competencia
+  Competencia "1" *-- "1..*" Factor : contiene
+  Competencia ..> TipoCompetencia
+}
+
+package "Preguntas y opciones" {
+  class Pregunta {
+    -id: Long
+    -nombre: String
+    -enunciado: String
+    -descripcion: String
+    -activa: Boolean
+    -eliminada: Boolean
+    +validarPonderaciones(): Boolean
+  }
+
+  class OpcionRespuesta {
+    -id: Long
+    -nombre: String
+    -descripcion: String
+    -eliminada: Boolean
+  }
+
+  class ItemOpcion {
+    -id: Long
+    -orden: Integer
+    -descripcion: String
+  }
+
+  class PreguntaItemOpcion {
+    -ponderacion: Double
+  }
+
+  Factor "1" <-- "0..*" Pregunta : pertenece
+  Pregunta "0..*" --> "1" OpcionRespuesta : usa
+  OpcionRespuesta "1" *-- "2..*" ItemOpcion : define
+  Pregunta "1" *-- "2..*" PreguntaItemOpcion : pondera
+  PreguntaItemOpcion "0..*" --> "1" ItemOpcion
+}
+
+note bottom of Pregunta
+  Las ponderaciones deben ser
+  no negativas y sumar 10.
+  Debe existir una ponderacion por
+  cada item de la opcion elegida.
+end note
+
+note bottom of CompetenciaRequerida
+  La competencia no se repite dentro
+  del puesto. La ponderacion esta
+  comprendida entre 0 y 10.
+end note
+
+note bottom of Factor
+  Para ser evaluado debe tener
+  al menos 2 preguntas activas.
+end note
+
+@enduml

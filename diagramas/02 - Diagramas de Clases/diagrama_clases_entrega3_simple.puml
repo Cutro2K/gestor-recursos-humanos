@@ -1,0 +1,557 @@
+@startuml
+title TP Diseño de Sistemas - Diagrama de clases final con DAO y DTO
+
+left to right direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam nodesep 24
+skinparam ranksep 32
+
+skinparam classBackgroundColor<<gestor>> #DDEEFF
+skinparam classBorderColor<<gestor>> #4078C0
+skinparam classBackgroundColor<<dto>> #E5F7E7
+skinparam classBorderColor<<dto>> #4C9A5F
+skinparam classBackgroundColor<<entidad>> #FFF4CC
+skinparam classBorderColor<<entidad>> #C89520
+skinparam classBackgroundColor<<dao>> #F0E5FF
+skinparam classBorderColor<<dao>> #8C5AB8
+skinparam classBackgroundColor<<enum>> #FFE2E2
+skinparam classBorderColor<<enum>> #C75B5B
+
+legend top left
+  |= Color |= Tipo |
+  |<#DDEEFF> | Gestor |
+  |<#E5F7E7> | DTO |
+  |<#FFF4CC> | Entidad |
+  |<#F0E5FF> | DAO |
+endlegend
+
+package "Gestores" as GESTORES #EEF6FF {
+  class GestorAutenticacion <<gestor>> {
+    +autenticarConsultor(usuario, contrasena): SesionDTO
+    +autenticarCandidato(tipoDoc, nroDoc, clave): SesionDTO
+  }
+
+  class GestorCandidatos <<gestor>> {
+    +importarCSV(ruta): ResultadoImportacionDTO
+    +buscar(apellido, nombre, numero): List~CandidatoDTO~
+    +exportarResultados(ruta): void
+  }
+
+  class GestorPuestos <<gestor>> {
+    +buscar(codigo, nombre, empresa): List~PuestoDTO~
+    +darDeAlta(datos: PuestoDTO): void
+    +modificar(datos: PuestoDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+
+  class GestorCompetencias <<gestor>> {
+    +buscar(nombre: String): List~CompetenciaDTO~
+    +darDeAlta(datos: CompetenciaDTO): void
+    +modificar(datos: CompetenciaDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+
+  class GestorFactores <<gestor>> {
+    +buscar(competencia, nombre): List~FactorDTO~
+    +darDeAlta(datos: FactorDTO): void
+    +modificar(datos: FactorDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+
+  class GestorPreguntas <<gestor>> {
+    +buscar(competencia, factor, nombre): List~PreguntaDTO~
+    +darDeAlta(datos: PreguntaDTO): void
+    +modificar(datos: PreguntaDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+    +generarConIA(competenciaId, factorId): PreguntaDTO
+  }
+
+  class GestorOpcionesRespuesta <<gestor>> {
+    +buscar(nombre): List~OpcionRespuestaDTO~
+    +darDeAlta(datos: OpcionRespuestaDTO): void
+    +modificar(datos: OpcionRespuestaDTO): void
+    +darDeBaja(id: Long, usuario: String): void
+  }
+
+  class GestorEvaluacion <<gestor>> {
+    +evaluarCandidatos(datos: EvaluacionDTO): EvaluacionResultadoDTO
+    +exportarClavesExcel(evaluacionId, ruta): ArchivoDTO
+  }
+
+  class GestorCuestionario <<gestor>> {
+    +obtenerActivo(candidatoId: Long): CuestionarioDTO
+    +guardarBloque(datos: BloqueRespondidoDTO): void
+    +finalizar(cuestionarioId: Long): void
+    +finalizarVencidos(): void
+  }
+
+  class GestorReportes <<gestor>> {
+    +comparativo(puestoId, candidatoId): ReporteComparativoDTO
+    +ordenMerito(puestoId, evaluacionIds): OrdenMeritoDTO
+  }
+}
+
+package "DTOs" as DTO #EFFAF0 {
+  class SesionDTO <<dto>> {
+    +sujetoId: Long
+    +rol: String
+  }
+
+  class ResultadoImportacionDTO <<dto>> {
+    +creados: Integer
+    +actualizados: Integer
+    +eliminados: Integer
+  }
+
+  class CandidatoDTO <<dto>> {
+    +id: Long
+    +nroCandidato: Long
+    +apellido: String
+    +nombre: String
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+  }
+
+  class PuestoDTO <<dto>> {
+    +id: Long
+    +codigo: String
+    +nombre: String
+    +empresa: String
+    +descripcion: String
+  }
+
+  class CompetenciaRequeridaDTO <<dto>> {
+    +competenciaId: Long
+    +nombre: String
+    +ponderacionMinima: Double
+  }
+  PuestoDTO "1" *-- "1..*" CompetenciaRequeridaDTO : competencias
+
+  class CompetenciaDTO <<dto>> {
+    +id: Long
+    +codigo: String
+    +nombre: String
+    +tipo: TipoCompetencia
+    +descripcion: String
+  }
+
+  class FactorDTO <<dto>> {
+    +id: Long
+    +competenciaId: Long
+    +codigo: String
+    +nombre: String
+    +orden: Integer
+    +descripcion: String
+  }
+
+  class OpcionRespuestaDTO <<dto>> {
+    +id: Long
+    +nombre: String
+    +descripcion: String
+  }
+
+  class ItemOpcionDTO <<dto>> {
+    +id: Long
+    +orden: Integer
+    +descripcion: String
+  }
+  OpcionRespuestaDTO "1" *-- "2..*" ItemOpcionDTO : items
+
+  class PreguntaDTO <<dto>> {
+    +id: Long
+    +nombre: String
+    +enunciado: String
+    +descripcion: String
+    +competenciaId: Long
+    +factorId: Long
+    +opcionRespuestaId: Long
+    +ponderaciones: Map~Long, Double~
+  }
+
+  class EvaluacionDTO <<dto>> {
+    +puestoId: Long
+    +candidatoIds: List~Long~
+  }
+
+  class EvaluacionResultadoDTO <<dto>> {
+    +evaluacionId: Long
+  }
+
+  class CredencialCuestionarioDTO <<dto>> {
+    +candidatoId: Long
+    +apellido: String
+    +nombre: String
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+    +claveIngreso: String
+  }
+  EvaluacionResultadoDTO "1" *-- "1..*" CredencialCuestionarioDTO : credenciales
+
+  class ArchivoDTO <<dto>> {
+    +nombre: String
+    +ruta: String
+    +tipoMime: String
+  }
+
+  class CuestionarioDTO <<dto>> {
+    +id: Long
+    +estado: EstadoCuestionario
+    +bloqueActual: Integer
+    +cantidadAccesos: Integer
+    +tiempoMaximoMinutos: Integer
+  }
+
+  class BloqueCuestionarioDTO <<dto>> {
+    +id: Long
+    +numero: Integer
+    +completado: Boolean
+  }
+
+  class PreguntaCuestionarioDTO <<dto>> {
+    +preguntaCuestionarioId: Long
+    +enunciado: String
+    +orden: Integer
+  }
+
+  class OpcionCuestionarioDTO <<dto>> {
+    +opcionCuestionarioId: Long
+    +orden: Integer
+    +descripcion: String
+  }
+
+  class BloqueRespondidoDTO <<dto>> {
+    +cuestionarioId: Long
+    +bloqueId: Long
+  }
+
+  class RespuestaDTO <<dto>> {
+    +preguntaCuestionarioId: Long
+    +opcionCuestionarioId: Long
+  }
+  CuestionarioDTO "1" *-- "1..*" BloqueCuestionarioDTO : bloques
+  BloqueCuestionarioDTO "1" *-- "1..*" PreguntaCuestionarioDTO : preguntas
+  PreguntaCuestionarioDTO "1" *-- "2..*" OpcionCuestionarioDTO : opciones
+  BloqueRespondidoDTO "1" *-- "1..*" RespuestaDTO : respuestas
+
+  class ReporteComparativoDTO <<dto>> {
+    +puesto: String
+    +candidato: String
+    +grafico: String
+    +fechaEmision: DateTime
+  }
+
+  class LineaComparativaDTO <<dto>> {
+    +competencia: String
+    +ponderacionRequerida: Double
+    +ponderacionObtenida: Double
+  }
+  ReporteComparativoDTO "1" *-- "1..*" LineaComparativaDTO : lineas
+
+  class OrdenMeritoDTO <<dto>> {
+    +puesto: String
+    +evaluacionIds: List~Long~
+    +fechaEmision: DateTime
+  }
+
+  class LineaOrdenMeritoDTO <<dto>> {
+    +posicion: Integer
+    +tipoDocumento: TipoDocumento
+    +nroDocumento: String
+    +apellido: String
+    +nombre: String
+    +puntajeObtenido: Double
+    +estado: EstadoCuestionario
+    +cumpleMinimos: Boolean
+    +fechaInicio: DateTime
+    +fechaFin: DateTime
+    +ultimoIngreso: DateTime
+    +cantidadAccesos: Integer
+  }
+  OrdenMeritoDTO "1" *-- "1..*" LineaOrdenMeritoDTO : candidatos
+}
+
+GESTORES ..> DTO : recibe y devuelve
+
+package "Modelo de dominio" as DOMINIO #FFFBEA {
+  class Candidato <<entidad>> {
+    -id: Long
+    -nroCandidato: Long
+    -apellido: String
+    -nombre: String
+    -tipoDocumento: TipoDocumento
+    -nroDocumento: String
+    -email: String
+    -eliminado: Boolean
+  }
+
+  class Puesto <<entidad>> {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -empresa: String
+    -descripcion: String
+    -eliminado: Boolean
+    +agregarCompetencia(competencia: Competencia, ponderacion: Double): void
+    +quitarCompetencia(competenciaId: Long): void
+  }
+
+  class CompetenciaRequerida <<entidad>> {
+    -ponderacionMinima: Double
+    +validarRango(): Boolean
+  }
+
+  class Competencia <<entidad>> {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -descripcion: String
+    -tipo: TipoCompetencia
+    -eliminada: Boolean
+    +puedeEvaluarse(): Boolean
+  }
+
+  class Factor <<entidad>> {
+    -id: Long
+    -codigo: String
+    -nombre: String
+    -orden: Integer
+    -descripcion: String
+    -eliminado: Boolean
+  }
+
+  class Pregunta <<entidad>> {
+    -id: Long
+    -nombre: String
+    -enunciado: String
+    -descripcion: String
+    -activa: Boolean
+    -eliminada: Boolean
+    +validarPonderaciones(): Boolean
+  }
+
+  class OpcionRespuesta <<entidad>> {
+    -id: Long
+    -nombre: String
+    -descripcion: String
+    -eliminada: Boolean
+  }
+
+  class ItemOpcion <<entidad>> {
+    -id: Long
+    -orden: Integer
+    -descripcion: String
+  }
+
+  class PreguntaItemOpcion <<entidad>> {
+    -ponderacion: Double
+  }
+
+  Puesto "1" *-- "1..*" CompetenciaRequerida : solicita
+  CompetenciaRequerida "0..*" --> "1" Competencia
+  Competencia "1" *-- "1..*" Factor : contiene
+  Factor "1" <-- "0..*" Pregunta : pertenece
+  Pregunta "0..*" --> "1" OpcionRespuesta : usa
+  OpcionRespuesta "1" *-- "2..*" ItemOpcion : define
+  Pregunta "1" *-- "2..*" PreguntaItemOpcion : pondera
+  PreguntaItemOpcion "0..*" --> "1" ItemOpcion
+
+  class Evaluacion <<entidad>> {
+    -id: Long
+    -fechaCreacion: DateTime
+    -versionModelo: String
+    -nombreArchivoExcel: String
+  }
+
+  class Cuestionario <<entidad>> {
+    -id: Long
+    -claveIngreso: String
+    -estado: EstadoCuestionario
+    -fechaGeneracion: DateTime
+    -fechaInicio: DateTime
+    -fechaFin: DateTime
+    -ultimoIngreso: DateTime
+    -cantidadAccesos: Integer
+    -cantidadMaximaAccesos: Integer
+    -tiempoMaximoMinutos: Integer
+    -cantidadPreguntasPorBloque: Integer
+    +cambiarEstado(nuevoEstado): void
+    +calcularResultados(): void
+  }
+
+  class BloqueCuestionario <<entidad>> {
+    -numero: Integer
+    -completado: Boolean
+    +estaCompleto(): Boolean
+  }
+
+  class PreguntaCuestionario <<entidad>> {
+    -id: Long
+    -orden: Integer
+    -enunciadoSnapshot: String
+    -respondida: Boolean
+  }
+
+  class OpcionCuestionario <<entidad>> {
+    -id: Long
+    -orden: Integer
+    -descripcionSnapshot: String
+    -ponderacionSnapshot: Double
+  }
+
+  class RespuestaCandidato <<entidad>> {
+    -id: Long
+    -fechaRespuesta: DateTime
+  }
+
+  class ResultadoCompetencia <<entidad>> {
+    -puntajeObtenido: Double
+  }
+
+  class ResultadoFactor <<entidad>> {
+    -puntajeObtenido: Double
+  }
+
+  Puesto "1" <-- "0..*" Evaluacion : corresponde a
+  Evaluacion "1" *-- "1..*" Cuestionario : genera
+  Candidato "1" <-- "0..*" Cuestionario : completa
+  Cuestionario "1" *-- "1..*" BloqueCuestionario : divide en
+  BloqueCuestionario "1" *-- "1..*" PreguntaCuestionario : contiene
+  PreguntaCuestionario "0..*" --> "1" Pregunta : origen
+  PreguntaCuestionario "1" *-- "2..*" OpcionCuestionario : opciones
+  OpcionCuestionario "0..*" --> "1" ItemOpcion : origen
+  PreguntaCuestionario "1" *-- "0..1" RespuestaCandidato : respuesta
+  RespuestaCandidato "0..*" --> "1" OpcionCuestionario : selecciona
+  Cuestionario "1" *-- "0..*" ResultadoCompetencia : resultados
+  ResultadoCompetencia "0..*" --> "1" Competencia
+  ResultadoCompetencia "1" *-- "1..*" ResultadoFactor : detalle
+  ResultadoFactor "0..*" --> "1" Factor
+
+  class RegistroAuditoria <<entidad>> {
+    -id: Long
+    -usuario: String
+    -fechaHora: DateTime
+    -accion: String
+    -entidad: String
+    -entidadId: Long
+    -detalle: String
+  }
+
+  enum TipoDocumento <<enum>> {
+    DNI
+    LE
+    LC
+    PP
+  }
+
+  enum TipoCompetencia <<enum>> {
+    TECNICA
+    ACTITUDINAL
+  }
+
+  enum EstadoCuestionario <<enum>> {
+    ACTIVO
+    EN_PROCESO
+    COMPLETO
+    INCOMPLETO
+    SIN_CONTESTAR
+  }
+
+  Candidato ..> TipoDocumento
+  Competencia ..> TipoCompetencia
+  Cuestionario ..> EstadoCuestionario
+}
+
+package "Acceso a datos" as DAO #F8F1FF {
+  class CandidatoDAO <<dao>> {
+    +buscar(apellido, nombre, numero): List~Candidato~
+    +buscarPorId(id: Long): Candidato
+    +listarTodos(): List~Candidato~
+    +guardar(candidato: Candidato): void
+    +eliminarLogicamente(id: Long): void
+  }
+
+  class PuestoDAO <<dao>> {
+    +buscar(codigo, nombre, empresa): List~Puesto~
+    +buscarPorId(id: Long): Puesto
+    +existeCodigoONombre(codigo, nombre): Boolean
+    +guardar(puesto: Puesto): void
+    +eliminarLogicamente(id: Long): void
+  }
+
+  class CompetenciaDAO <<dao>> {
+    +buscar(nombre: String): List~Competencia~
+    +buscarPorId(id: Long): Competencia
+    +guardar(competencia: Competencia): void
+    +eliminarLogicamente(id: Long): void
+  }
+
+  class FactorDAO <<dao>> {
+    +buscar(competencia, nombre): List~Factor~
+    +buscarPorId(id: Long): Factor
+    +guardar(factor: Factor): void
+    +eliminarLogicamente(id: Long): void
+  }
+
+  class PreguntaDAO <<dao>> {
+    +buscar(competencia, factor, nombre): List~Pregunta~
+    +buscarPorId(id: Long): Pregunta
+    +existeNombreOEnunciado(nombre, enunciado): Boolean
+    +guardar(pregunta: Pregunta): void
+    +eliminarLogicamente(id: Long): void
+  }
+
+  class OpcionRespuestaDAO <<dao>> {
+    +buscar(nombre): List~OpcionRespuesta~
+    +guardar(opcion: OpcionRespuesta): void
+    +estaEnUso(id: Long): Boolean
+    +eliminarLogicamente(id: Long): void
+  }
+
+  class EvaluacionDAO <<dao>> {
+    +guardar(evaluacion: Evaluacion): void
+    +buscarPorId(id: Long): Evaluacion
+    +buscarPorPuesto(puestoId: Long): List~Evaluacion~
+  }
+
+  class CuestionarioDAO <<dao>> {
+    +buscarActivo(candidatoId: Long): Cuestionario
+    +buscarPorId(id: Long): Cuestionario
+    +buscarPorEvaluaciones(ids: List~Long~): List~Cuestionario~
+    +buscarVencidos(fechaHora: DateTime): List~Cuestionario~
+    +guardar(cuestionario: Cuestionario): void
+    +actualizar(cuestionario: Cuestionario): void
+  }
+
+  class AuditoriaDAO <<dao>> {
+    +guardar(registro: RegistroAuditoria): void
+  }
+}
+
+GESTORES ..> DAO : utiliza
+DAO ..> DOMINIO : persiste
+
+note bottom of Pregunta
+  Las ponderaciones de sus opciones
+  deben ser no negativas, sumar 10 y
+  cubrir todos los items del grupo elegido.
+end note
+
+note bottom of Evaluacion
+  Fija la version del modelo usada por todos
+  los cuestionarios de la evaluacion.
+end note
+
+note bottom of Cuestionario
+  Un candidato solo puede tener un cuestionario
+  ACTIVO o EN_PROCESO. Se eligen 2 preguntas
+  al azar por cada factor evaluable. Los bloques
+  completados no se visualizan ni modifican.
+end note
+
+@enduml

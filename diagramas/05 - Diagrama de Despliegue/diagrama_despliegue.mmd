@@ -1,0 +1,61 @@
+flowchart LR
+    %% Estilos UML según cátedra Diseño de Sistemas (UTN FRSF)
+    %% Repositorio de implementación: https://github.com/Cutro2K/gestor-recursos-humanos
+    classDef device fill:#ffffff,stroke:#1B365D,stroke-width:2px,color:#1B365D,font-weight:bold
+    classDef execEnv fill:#EBF3FA,stroke:#4A77A8,stroke-width:1.5px,color:#1B365D
+    classDef artifact fill:#FFFDF9,stroke:#D9822B,stroke-width:1.5px,color:#1B365D
+
+    subgraph PCConsultor["«device» PC del Consultor"]
+        subgraph NavConsultor["«executionEnvironment» Navegador Web"]
+            ArtClient1["«artifact» frontend-client.js (Next.js / React / TS)"]
+        end
+    end
+
+    subgraph PCCandidato["«device» PC del Candidato"]
+        subgraph NavCandidato["«executionEnvironment» Navegador Web"]
+            ArtClient2["«artifact» frontend-client.js (Next.js / React / TS)"]
+        end
+    end
+
+    Impresora["«device» Impresora"]
+    SistemaCV["«device» Sistema de Gestión de Candidatos y CV"]
+
+    subgraph ServidorApp["«device» Servidor de Aplicaciones"]
+        subgraph NodeEnv["«executionEnvironment» Node.js (Next.js Server :3000)"]
+            ArtNext["«artifact» frontend (Next.js App Router: src/app, components, service)"]
+        end
+        subgraph JVMEnv["«executionEnvironment» JVM 25 · Spring Boot 4 (Tomcat :8080)"]
+            ArtJar["«artifact» api.jar (controller, service, dto, model, dao, exception)"]
+            ArtProps["«artifact» application.properties (DB_URL, DB_USERNAME, DB_PASSWORD)"]
+        end
+        NodeEnv ---|"«HTTP / REST (JSON)» (1 a 1)"| JVMEnv
+    end
+
+    subgraph ServidorBD["«device» Servidor de BD"]
+        subgraph PostgresEnv["«executionEnvironment» PostgreSQL (:5432 - deso_db)"]
+            ArtSchema["«artifact» db/01-schema.sql (Tablas del DER)"]
+            ArtData["«artifact» db/02-data.sql (Seed de datos)"]
+        end
+    end
+
+    subgraph ServidorLDAP["«device» Servidor LDAP de la Organización"]
+        LDAPEnv["«executionEnvironment» OpenLDAP / Active Directory"]
+    end
+
+    subgraph ServicioIA["«device» Servicio de IA"]
+        IAEnv["«executionEnvironment» API GenAI (LLM)"]
+    end
+
+    %% Caminos de comunicación con protocolo y multiplicidad
+    PCConsultor ---|"«HTTP/HTTPS · REST (JSON)» (1..* a 1)"| ServidorApp
+    PCCandidato ---|"«HTTP/HTTPS · REST (JSON)» (1..* a 1)"| ServidorApp
+    PCConsultor ---|"«IPP / TCP/IP» (1..* a 1) [CU27, CU28]"| Impresora
+    PCConsultor ---|"«CSV / SMB» (1..* a 1) [CU06, CU07]"| SistemaCV
+
+    ServidorApp ---|"«JDBC (:5432)» (1 a 1)"| ServidorBD
+    ServidorApp ---|"«LDAP / LDAPS» (1 a 1) [CU01]"| ServidorLDAP
+    ServidorApp ---|"«HTTPS / REST (JSON)» (1 a 1) [CU09, CU21, CU33]"| ServicioIA
+
+    class PCConsultor,PCCandidato,Impresora,SistemaCV,ServidorApp,ServidorBD,ServidorLDAP,ServicioIA device
+    class NavConsultor,NavCandidato,NodeEnv,JVMEnv,PostgresEnv,LDAPEnv,IAEnv execEnv
+    class ArtClient1,ArtClient2,ArtNext,ArtJar,ArtProps,ArtSchema,ArtData artifact

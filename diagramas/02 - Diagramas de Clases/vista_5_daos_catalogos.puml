@@ -1,0 +1,92 @@
+@startuml
+title Vista 5 - DAOs de catálogos
+
+top to bottom direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam classBackgroundColor<<dao>> #F0E5FF
+skinparam classBorderColor<<dao>> #8C5AB8
+skinparam classBackgroundColor<<entidad>> #FFF4CC
+skinparam classBorderColor<<entidad>> #C89520
+
+package "DAO" {
+  class CandidatoDAO <<dao>> {
+    +buscar(apellido, nombre, numero): List~Candidato~
+    +buscarPorId(id: Long): Candidato
+    +listarTodos(): List~Candidato~
+    +guardar(candidato: Candidato): void
+    +eliminarLogicamente(id: Long): void
+  }
+  class PuestoDAO <<dao>> {
+    +buscar(codigo, nombre, empresa): List~Puesto~
+    +buscarPorId(id: Long): Puesto
+    +existeCodigoONombre(codigo, nombre): Boolean
+    +guardar(puesto: Puesto): void
+    +eliminarLogicamente(id: Long): void
+  }
+  class CompetenciaDAO <<dao>> {
+    +buscar(nombre: String): List~Competencia~
+    +buscarPorId(id: Long): Competencia
+    +guardar(competencia: Competencia): void
+    +eliminarLogicamente(id: Long): void
+  }
+  class FactorDAO <<dao>> {
+    +buscar(competencia, nombre): List~Factor~
+    +buscarPorId(id: Long): Factor
+    +guardar(factor: Factor): void
+    +eliminarLogicamente(id: Long): void
+  }
+  class PreguntaDAO <<dao>> {
+    +buscar(competencia, factor, nombre): List~Pregunta~
+    +buscarPorId(id: Long): Pregunta
+    +existeNombreOEnunciado(nombre, enunciado): Boolean
+    +guardar(pregunta: Pregunta): void
+    +eliminarLogicamente(id: Long): void
+  }
+  class OpcionRespuestaDAO <<dao>> {
+    +buscar(nombre): List~OpcionRespuesta~
+    +guardar(opcion: OpcionRespuesta): void
+    +estaEnUso(id: Long): Boolean
+    +eliminarLogicamente(id: Long): void
+  }
+}
+
+package "Entidades" {
+  class Candidato <<entidad>> {
+    -id: Long
+  }
+  class Puesto <<entidad>> {
+    -id: Long
+  }
+  class Competencia <<entidad>> {
+    -id: Long
+  }
+  class Pregunta <<entidad>> {
+    -id: Long
+  }
+  class Factor <<entidad>> {
+    -id: Long
+  }
+  class OpcionRespuesta <<entidad>> {
+    -id: Long
+  }
+}
+
+CandidatoDAO --> Candidato : persiste
+PuestoDAO --> Puesto : persiste
+CompetenciaDAO --> Competencia : persiste
+FactorDAO --> Factor : persiste
+PreguntaDAO --> Pregunta : persiste
+OpcionRespuestaDAO --> OpcionRespuesta : persiste
+
+note bottom of PuestoDAO
+  Los DAO son clases concretas:
+  no se agrega DAOImpl.
+end note
+
+@enduml

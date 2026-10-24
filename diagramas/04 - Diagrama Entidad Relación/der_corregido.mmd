@@ -1,0 +1,286 @@
+erDiagram
+    CONSULTOR {
+        BIGINT id PK
+        VARCHAR username UK
+        VARCHAR password
+        VARCHAR nombre
+        VARCHAR apellido
+        VARCHAR email UK
+        BOOLEAN activo
+        DATETIME fecha_creacion
+    }
+
+    CANDIDATO {
+        BIGINT id PK
+        BIGINT nro_candidato UK
+        VARCHAR apellido
+        VARCHAR nombre
+        VARCHAR tipo_documento "UNIQUE junto con nro_documento; DNI, LE, LC o PP"
+        VARCHAR nro_documento "UNIQUE junto con tipo_documento"
+        DATE fecha_nacimiento
+        CHAR genero "H o M segun CU006"
+        VARCHAR nacionalidad
+        VARCHAR email
+        VARCHAR escolaridad
+        BOOLEAN eliminado
+    }
+
+    PUESTO {
+        BIGINT id PK
+        VARCHAR codigo UK
+        VARCHAR nombre UK
+        VARCHAR descripcion
+        VARCHAR empresa
+        BOOLEAN eliminado
+    }
+
+    COMPETENCIA {
+        BIGINT id PK
+        VARCHAR codigo UK
+        VARCHAR nombre UK
+        VARCHAR descripcion
+        VARCHAR tipo "TECNICA o ACTITUDINAL"
+        BOOLEAN eliminada
+    }
+
+    PUESTO_COMPETENCIA {
+        BIGINT puesto_id PK,FK "PK compuesta"
+        BIGINT competencia_id PK,FK "PK compuesta"
+        DECIMAL ponderacion_minima "Entre 0 y 10"
+    }
+
+    FACTOR {
+        BIGINT id PK
+        BIGINT competencia_id FK
+        VARCHAR codigo UK
+        VARCHAR nombre UK
+        INTEGER orden "UNIQUE junto con competencia_id"
+        VARCHAR descripcion
+        BOOLEAN eliminado
+    }
+
+    OPCION_RESPUESTA {
+        BIGINT id PK
+        VARCHAR nombre UK
+        VARCHAR descripcion
+        BOOLEAN eliminada
+    }
+
+    ITEM_OPCION {
+        BIGINT id PK
+        BIGINT opcion_respuesta_id FK
+        INTEGER orden "Consecutivo y UNIQUE dentro del grupo"
+        VARCHAR descripcion "UNIQUE dentro del grupo"
+    }
+
+    PREGUNTA {
+        BIGINT id PK
+        BIGINT factor_id FK
+        BIGINT opcion_respuesta_id FK
+        VARCHAR nombre "UNIQUE junto con factor_id"
+        VARCHAR enunciado "UNIQUE junto con factor_id"
+        VARCHAR descripcion "Opcional"
+        BOOLEAN activa
+        BOOLEAN eliminada
+    }
+
+    PREGUNTA_ITEM_OPCION {
+        BIGINT pregunta_id PK,FK "PK compuesta"
+        BIGINT item_opcion_id PK,FK "PK compuesta"
+        DECIMAL ponderacion "Mayor o igual que 0; suma por pregunta igual a 10"
+    }
+
+    CONFIGURACION_CUESTIONARIO {
+        BIGINT id PK
+        DATETIME vigencia_desde
+        DATETIME vigencia_hasta "Opcional"
+        VARCHAR instrucciones
+        INTEGER cantidad_maxima_accesos
+        INTEGER minutos_maximos_activo
+        INTEGER minutos_maximos_resolucion
+        INTEGER preguntas_por_bloque
+        BOOLEAN activa
+    }
+
+    EVALUACION {
+        BIGINT id PK
+        BIGINT consultor_id FK "Consultor que creo la evaluacion"
+        BIGINT puesto_id FK
+        BIGINT configuracion_id FK
+        DATETIME fecha_creacion
+        VARCHAR version_modelo
+        VARCHAR nombre_archivo_excel "Opcional"
+    }
+
+    MODELO_EVALUACION {
+        BIGINT id PK
+        BIGINT evaluacion_id FK,UK
+        DATETIME fecha_congelamiento
+        VARCHAR version
+    }
+
+    MODELO_COMPETENCIA {
+        BIGINT id PK
+        BIGINT modelo_evaluacion_id FK "UNIQUE junto con competencia_origen_id"
+        BIGINT competencia_origen_id FK "UNIQUE junto con modelo_evaluacion_id"
+        VARCHAR codigo_snapshot
+        VARCHAR nombre_snapshot
+        VARCHAR tipo_snapshot
+        DECIMAL ponderacion_minima_snapshot
+    }
+
+    MODELO_FACTOR {
+        BIGINT id PK
+        BIGINT modelo_competencia_id FK "UNIQUE junto con factor_origen_id"
+        BIGINT factor_origen_id FK "UNIQUE junto con modelo_competencia_id"
+        VARCHAR codigo_snapshot
+        VARCHAR nombre_snapshot
+        INTEGER orden_snapshot
+    }
+
+    MODELO_PREGUNTA {
+        BIGINT id PK
+        BIGINT modelo_factor_id FK
+        BIGINT pregunta_origen_id FK
+        VARCHAR nombre_snapshot
+        VARCHAR enunciado_snapshot
+        VARCHAR descripcion_snapshot "Opcional"
+    }
+
+    MODELO_OPCION {
+        BIGINT id PK
+        BIGINT modelo_pregunta_id FK
+        BIGINT item_opcion_origen_id FK
+        INTEGER orden_snapshot
+        VARCHAR descripcion_snapshot
+        DECIMAL ponderacion_snapshot
+    }
+
+    CUESTIONARIO {
+        BIGINT id PK
+        BIGINT evaluacion_id FK "UNIQUE junto con candidato_id"
+        BIGINT candidato_id FK "UNIQUE junto con evaluacion_id"
+        CHAR clave_ingreso "8 caracteres alfanumericos"
+        VARCHAR estado "ACTIVO, EN_PROCESO, COMPLETO, INCOMPLETO o SIN_CONTESTAR"
+        DATETIME fecha_generacion
+        DATETIME fecha_inicio "Opcional"
+        DATETIME fecha_fin "Opcional"
+        DATETIME ultimo_ingreso "Opcional"
+        DATETIME fecha_cambio_estado
+        INTEGER cantidad_accesos
+        INTEGER cantidad_maxima_accesos "Snapshot de configuracion"
+        INTEGER minutos_maximos_activo "Snapshot de configuracion"
+        INTEGER minutos_maximos_resolucion "Snapshot de configuracion"
+        INTEGER preguntas_por_bloque "Snapshot de configuracion"
+        DECIMAL puntaje_total "Opcional; regla de CU028 pendiente"
+    }
+
+    BLOQUE_CUESTIONARIO {
+        BIGINT id PK
+        BIGINT cuestionario_id FK
+        INTEGER numero "UNIQUE dentro del cuestionario"
+        BOOLEAN completado
+        DATETIME fecha_completado "Opcional"
+    }
+
+    PREGUNTA_CUESTIONARIO {
+        BIGINT id PK
+        BIGINT bloque_cuestionario_id FK
+        BIGINT modelo_pregunta_id FK
+        INTEGER orden "UNIQUE dentro del bloque"
+        VARCHAR enunciado_snapshot
+        BOOLEAN respondida
+    }
+
+    OPCION_CUESTIONARIO {
+        BIGINT id PK
+        BIGINT pregunta_cuestionario_id FK
+        BIGINT modelo_opcion_id FK
+        INTEGER orden "UNIQUE dentro de la pregunta"
+        VARCHAR descripcion_snapshot
+        DECIMAL ponderacion_snapshot
+    }
+
+    RESPUESTA_CANDIDATO {
+        BIGINT id PK
+        BIGINT pregunta_cuestionario_id FK,UK "Una respuesta como maximo por pregunta"
+        BIGINT opcion_cuestionario_id FK
+        DATETIME fecha_respuesta
+    }
+
+    RESULTADO_COMPETENCIA {
+        BIGINT id PK
+        BIGINT cuestionario_id FK "UNIQUE junto con modelo_competencia_id"
+        BIGINT modelo_competencia_id FK "UNIQUE junto con cuestionario_id"
+        DECIMAL puntaje_obtenido
+    }
+
+    RESULTADO_FACTOR {
+        BIGINT id PK
+        BIGINT resultado_competencia_id FK "UNIQUE junto con modelo_factor_id"
+        BIGINT modelo_factor_id FK "UNIQUE junto con resultado_competencia_id"
+        DECIMAL puntaje_obtenido
+    }
+
+    REGISTRO_AUDITORIA {
+        BIGINT id PK
+        BIGINT consultor_id FK "Consultor responsable de la accion"
+        DATETIME fecha_hora
+        VARCHAR accion
+        VARCHAR entidad
+        BIGINT entidad_id
+        VARCHAR detalle "Opcional"
+    }
+
+    REGISTRO_EJECUCION_PROCESO {
+        BIGINT id PK
+        VARCHAR proceso "Por ejemplo FINALIZAR_CUESTIONARIOS"
+        DATETIME fecha_hora
+        VARCHAR accion "INICIO o FINALIZACION"
+        VARCHAR resultado "Opcional"
+        VARCHAR detalle "Opcional"
+    }
+
+    CONSULTOR ||--o{ EVALUACION : crea
+    CONSULTOR ||--o{ REGISTRO_AUDITORIA : registra
+
+    PUESTO ||--|{ PUESTO_COMPETENCIA : requiere
+    COMPETENCIA ||--o{ PUESTO_COMPETENCIA : es_requerida_en
+
+    COMPETENCIA ||--o{ FACTOR : contiene
+    FACTOR ||--o{ PREGUNTA : agrupa
+
+    OPCION_RESPUESTA ||--|{ ITEM_OPCION : define
+    OPCION_RESPUESTA ||--o{ PREGUNTA : es_usada_por
+    PREGUNTA ||--|{ PREGUNTA_ITEM_OPCION : pondera
+    ITEM_OPCION ||--o{ PREGUNTA_ITEM_OPCION : recibe_ponderacion
+
+    PUESTO ||--o{ EVALUACION : corresponde_a
+    CONFIGURACION_CUESTIONARIO ||--o{ EVALUACION : parametriza
+    EVALUACION ||--|| MODELO_EVALUACION : congela
+
+    MODELO_EVALUACION ||--|{ MODELO_COMPETENCIA : incluye
+    COMPETENCIA ||--o{ MODELO_COMPETENCIA : origina
+    MODELO_COMPETENCIA ||--|{ MODELO_FACTOR : incluye
+    FACTOR ||--o{ MODELO_FACTOR : origina
+    MODELO_FACTOR ||--|{ MODELO_PREGUNTA : habilita
+    PREGUNTA ||--o{ MODELO_PREGUNTA : origina
+    MODELO_PREGUNTA ||--|{ MODELO_OPCION : ofrece
+    ITEM_OPCION ||--o{ MODELO_OPCION : origina
+
+    EVALUACION ||--|{ CUESTIONARIO : genera
+    CANDIDATO ||--o{ CUESTIONARIO : completa
+
+    CUESTIONARIO ||--o{ BLOQUE_CUESTIONARIO : se_divide_en
+    BLOQUE_CUESTIONARIO ||--|{ PREGUNTA_CUESTIONARIO : contiene
+    MODELO_PREGUNTA ||--o{ PREGUNTA_CUESTIONARIO : es_seleccionada_como
+    PREGUNTA_CUESTIONARIO ||--|{ OPCION_CUESTIONARIO : ofrece
+    MODELO_OPCION ||--o{ OPCION_CUESTIONARIO : se_copia_como
+
+    PREGUNTA_CUESTIONARIO ||--o| RESPUESTA_CANDIDATO : recibe
+    OPCION_CUESTIONARIO ||--o| RESPUESTA_CANDIDATO : es_seleccionada_en
+
+    CUESTIONARIO ||--o{ RESULTADO_COMPETENCIA : calcula
+    MODELO_COMPETENCIA ||--o{ RESULTADO_COMPETENCIA : corresponde_a
+    RESULTADO_COMPETENCIA ||--|{ RESULTADO_FACTOR : detalla
+    MODELO_FACTOR ||--o{ RESULTADO_FACTOR : corresponde_a

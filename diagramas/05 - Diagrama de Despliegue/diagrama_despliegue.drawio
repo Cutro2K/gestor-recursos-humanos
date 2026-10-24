@@ -1,0 +1,113 @@
+<mxfile host="app.diagrams.net" modified="2026-10-23T14:22:00.000Z" agent="Antigravity" version="24.0.0" type="device">
+  <diagram id="despliegue-capital-humano" name="Diagrama de Despliegue - Capit@l Humano">
+    <mxGraphModel dx="1500" dy="950" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 1. Impresora -->
+        <mxCell id="node_impresora" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Impresora&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=12;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="60" width="320" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- 2. PC del Consultor -->
+        <mxCell id="node_pc_consultor" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;PC del Consultor&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=14;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="210" width="320" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="env_nav_consultor" value="&lt;i&gt;«executionEnvironment»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Navegador web&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=10;fillColor=#EBF3FA;strokeColor=#4A77A8;strokeWidth=1.5;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;" vertex="1" parent="node_pc_consultor">
+          <mxGeometry x="20" y="65" width="275" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="art_client_consultor" value="&lt;i&gt;«artifact»&lt;/i&gt;&lt;br&gt;&lt;b&gt;frontend-client.js&lt;/b&gt;&lt;br&gt;(Next.js / React / TypeScript)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDF9;strokeColor=#D9822B;strokeWidth=1.5;fontColor=#1E293B;align=left;spacingLeft=10;" vertex="1" parent="env_nav_consultor">
+          <mxGeometry x="15" y="55" width="240" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- 3. Sistema de Gestión de Candidatos y CV -->
+        <mxCell id="node_sistema_cv" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Sistema de Gestión de Candidatos y CV&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=12;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="500" width="320" height="85" as="geometry" />
+        </mxCell>
+
+        <!-- 4. PC del Candidato -->
+        <mxCell id="node_pc_candidato" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;PC del Candidato&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=14;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="630" width="320" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="env_nav_candidato" value="&lt;i&gt;«executionEnvironment»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Navegador web&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=10;fillColor=#EBF3FA;strokeColor=#4A77A8;strokeWidth=1.5;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;" vertex="1" parent="node_pc_candidato">
+          <mxGeometry x="20" y="65" width="275" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="art_client_candidato" value="&lt;i&gt;«artifact»&lt;/i&gt;&lt;br&gt;&lt;b&gt;frontend-client.js&lt;/b&gt;&lt;br&gt;(Next.js / React / TypeScript)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDF9;strokeColor=#D9822B;strokeWidth=1.5;fontColor=#1E293B;align=left;spacingLeft=10;" vertex="1" parent="env_nav_candidato">
+          <mxGeometry x="15" y="55" width="240" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- 5. Servidor LDAP -->
+        <mxCell id="node_ldap" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Servidor LDAP de la organización&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=12;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="530" y="60" width="420" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- 6. Servidor de Aplicaciones -->
+        <mxCell id="node_app_server" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Servidor de aplicaciones&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=14;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="530" y="210" width="420" height="470" as="geometry" />
+        </mxCell>
+        <mxCell id="env_nodejs" value="&lt;i&gt;«executionEnvironment»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Node.js (Next.js Server :3000)&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=10;fillColor=#EBF3FA;strokeColor=#4A77A8;strokeWidth=1.5;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;" vertex="1" parent="node_app_server">
+          <mxGeometry x="25" y="65" width="365" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="art_nextjs" value="&lt;i&gt;«artifact»&lt;/i&gt;&lt;br&gt;&lt;b&gt;frontend&lt;/b&gt; (Next.js App Router: src/app, components, service)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDF9;strokeColor=#D9822B;strokeWidth=1.5;fontColor=#1E293B;align=left;spacingLeft=10;" vertex="1" parent="env_nodejs">
+          <mxGeometry x="15" y="55" width="330" height="62" as="geometry" />
+        </mxCell>
+
+        <mxCell id="env_jvm" value="&lt;i&gt;«executionEnvironment»&lt;/i&gt;&lt;br&gt;&lt;b&gt;JVM 25 · Spring Boot 4 (Tomcat embebido :8080)&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=10;fillColor=#EBF3FA;strokeColor=#4A77A8;strokeWidth=1.5;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;" vertex="1" parent="node_app_server">
+          <mxGeometry x="25" y="240" width="365" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="art_api_jar" value="&lt;i&gt;«artifact»&lt;/i&gt;&lt;br&gt;&lt;b&gt;api.jar (com.deso.api)&lt;/b&gt;&lt;br&gt;(controller, service, dto, model, dao, exception)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDF9;strokeColor=#D9822B;strokeWidth=1.5;fontColor=#1E293B;align=left;spacingLeft=10;" vertex="1" parent="env_jvm">
+          <mxGeometry x="15" y="55" width="330" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="art_config_props" value="&lt;i&gt;«artifact»&lt;/i&gt;&lt;br&gt;&lt;b&gt;application.properties&lt;/b&gt; (DB_URL, DB_USERNAME, DB_PASSWORD)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDF9;strokeColor=#D9822B;strokeWidth=1.5;fontColor=#1E293B;align=left;spacingLeft=10;" vertex="1" parent="env_jvm">
+          <mxGeometry x="15" y="135" width="330" height="58" as="geometry" />
+        </mxCell>
+
+        <!-- 7. Servicio de IA -->
+        <mxCell id="node_ia" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Servicio de IA (API GenAI)&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=12;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="530" y="750" width="420" height="85" as="geometry" />
+        </mxCell>
+
+        <!-- 8. Servidor de BD -->
+        <mxCell id="node_db_server" value="&lt;i&gt;«device»&lt;/i&gt;&lt;br&gt;&lt;b&gt;Servidor de BD&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=14;fillColor=#FFFFFF;strokeColor=#1B365D;strokeWidth=2;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=12;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="290" width="360" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="env_postgres" value="&lt;i&gt;«executionEnvironment»&lt;/i&gt;&lt;br&gt;&lt;b&gt;PostgreSQL (:5432 - deso_db)&lt;/b&gt;" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;size=10;fillColor=#EBF3FA;strokeColor=#4A77A8;strokeWidth=1.5;fontColor=#0F294A;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;" vertex="1" parent="node_db_server">
+          <mxGeometry x="20" y="65" width="315" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="art_sql_schema" value="&lt;i&gt;«artifact»&lt;/i&gt;&lt;br&gt;&lt;b&gt;db/01-schema.sql&lt;/b&gt; (Creación de tablas DER)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDF9;strokeColor=#D9822B;strokeWidth=1.5;fontColor=#1E293B;align=left;spacingLeft=10;" vertex="1" parent="env_postgres">
+          <mxGeometry x="15" y="55" width="280" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="art_sql_data" value="&lt;i&gt;«artifact»&lt;/i&gt;&lt;br&gt;&lt;b&gt;db/02-data.sql&lt;/b&gt; (Datos iniciales / Seed)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFDF9;strokeColor=#D9822B;strokeWidth=1.5;fontColor=#1E293B;align=left;spacingLeft=10;" vertex="1" parent="env_postgres">
+          <mxGeometry x="15" y="128" width="280" height="62" as="geometry" />
+        </mxCell>
+
+        <!-- Caminos de comunicación -->
+        <mxCell id="edge_consultor_impresora" value="«IPP / TCP/IP»&lt;br&gt;1..* — 1" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=2;fontColor=#1B365D;fontStyle=1;" edge="1" parent="1" source="node_pc_consultor" target="node_impresora">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_consultor_cv" value="«CSV / SMB»&lt;br&gt;1..* — 1" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=2;fontColor=#1B365D;fontStyle=1;" edge="1" parent="1" source="node_pc_consultor" target="node_sistema_cv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_consultor_app" value="«HTTP/HTTPS · REST (JSON)»&lt;br&gt;1..* — 1" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=2;fontColor=#1B365D;fontStyle=1;" edge="1" parent="1" source="node_pc_consultor" target="node_app_server">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_candidato_app" value="«HTTP/HTTPS · REST (JSON)»&lt;br&gt;1..* — 1" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=2;fontColor=#1B365D;fontStyle=1;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="node_pc_candidato" target="node_app_server">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_app_ldap" value="«LDAP / LDAPS»&lt;br&gt;1 — 1" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=2;fontColor=#1B365D;fontStyle=1;" edge="1" parent="1" source="node_app_server" target="node_ldap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_app_ia" value="«HTTPS / REST (JSON)»&lt;br&gt;1 — 1" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=2;fontColor=#1B365D;fontStyle=1;" edge="1" parent="1" source="node_app_server" target="node_ia">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_app_db" value="«JDBC (:5432)»&lt;br&gt;1 — 1" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=2;fontColor=#1B365D;fontStyle=1;" edge="1" parent="1" source="node_app_server" target="node_db_server">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_node_jvm" value="«HTTP / REST (JSON)» (1 — 1)" style="endArrow=none;html=1;strokeColor=#1B365D;strokeWidth=1.5;fontColor=#1B365D;fontStyle=1;" edge="1" parent="node_app_server" source="env_nodejs" target="env_jvm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

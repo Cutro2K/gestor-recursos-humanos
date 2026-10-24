@@ -1,0 +1,72 @@
+@startuml
+title Vista 6 - DAOs de evaluación y auditoría
+
+top to bottom direction
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam classBackgroundColor<<dao>> #F0E5FF
+skinparam classBorderColor<<dao>> #8C5AB8
+skinparam classBackgroundColor<<entidad>> #FFF4CC
+skinparam classBorderColor<<entidad>> #C89520
+
+package "DAO" {
+  class EvaluacionDAO <<dao>> {
+    +guardar(evaluacion: Evaluacion): void
+    +buscarPorId(id: Long): Evaluacion
+    +buscarPorPuesto(puestoId: Long): List~Evaluacion~
+  }
+  class CuestionarioDAO <<dao>> {
+    +buscarActivo(candidatoId: Long): Cuestionario
+    +buscarPorId(id: Long): Cuestionario
+    +buscarPorEvaluaciones(ids: List~Long~): List~Cuestionario~
+    +buscarVencidos(fechaHora: DateTime): List~Cuestionario~
+    +guardar(cuestionario: Cuestionario): void
+    +actualizar(cuestionario: Cuestionario): void
+  }
+  class AuditoriaDAO <<dao>> {
+    +guardar(registro: RegistroAuditoria): void
+  }
+}
+
+package "Entidades" {
+  class Evaluacion <<entidad>> {
+    -id: Long
+    -fechaCreacion: DateTime
+  }
+  class Cuestionario <<entidad>> {
+    -id: Long
+    -estado: EstadoCuestionario
+  }
+  enum EstadoCuestionario <<enum>> {
+    ACTIVO
+    EN_PROCESO
+    COMPLETO
+    INCOMPLETO
+    SIN_CONTESTAR
+  }
+  class RegistroAuditoria <<entidad>> {
+    -id: Long
+    -usuario: String
+    -fechaHora: DateTime
+    -accion: String
+    -entidad: String
+    -entidadId: Long
+    -detalle: String
+  }
+}
+
+EvaluacionDAO --> Evaluacion : persiste
+CuestionarioDAO --> Cuestionario : persiste
+AuditoriaDAO --> RegistroAuditoria : persiste
+
+note bottom of AuditoriaDAO
+  Registra bajas lógicas y ejecuciones
+  de procesos automáticos.
+end note
+
+@enduml
