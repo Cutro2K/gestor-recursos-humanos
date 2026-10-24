@@ -109,3 +109,69 @@ CREATE TABLE factor (
     CONSTRAINT uq_factor_competencia_orden UNIQUE (competencia_id, orden),
     CONSTRAINT chk_factor_orden CHECK (orden > 0)
 );
+
+-- [PBI-3] Opciones de Respuesta, Ítems de Opción, Preguntas y Ponderaciones
+-- =============================================================================
+-- TABLA: OPCION_RESPUESTA
+-- =============================================================================
+CREATE TABLE opcion_respuesta (
+    id BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    descripcion TEXT,
+    eliminada BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT uq_opcion_respuesta_nombre UNIQUE (nombre)
+);
+
+-- =============================================================================
+-- TABLA: ITEM_OPCION
+-- =============================================================================
+CREATE TABLE item_opcion (
+    id BIGSERIAL PRIMARY KEY,
+    opcion_respuesta_id BIGINT NOT NULL,
+    orden INTEGER NOT NULL,
+    descripcion VARCHAR(150) NOT NULL,
+
+    CONSTRAINT fk_item_opcion_opcion_respuesta FOREIGN KEY (opcion_respuesta_id)
+        REFERENCES opcion_respuesta(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_item_opcion_orden UNIQUE (opcion_respuesta_id, orden),
+    CONSTRAINT uq_item_opcion_descripcion UNIQUE (opcion_respuesta_id, descripcion),
+    CONSTRAINT chk_item_opcion_orden CHECK (orden > 0)
+);
+
+-- =============================================================================
+-- TABLA: PREGUNTA
+-- =============================================================================
+CREATE TABLE pregunta (
+    id BIGSERIAL PRIMARY KEY,
+    factor_id BIGINT NOT NULL,
+    opcion_respuesta_id BIGINT NOT NULL,
+    nombre VARCHAR(50) NOT NULL,
+    enunciado VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    eliminada BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_pregunta_factor FOREIGN KEY (factor_id)
+        REFERENCES factor(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_pregunta_opcion_respuesta FOREIGN KEY (opcion_respuesta_id)
+        REFERENCES opcion_respuesta(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_pregunta_nombre UNIQUE (factor_id, nombre),
+    CONSTRAINT uq_pregunta_enunciado UNIQUE (factor_id, enunciado)
+);
+
+-- =============================================================================
+-- TABLA INTERMEDIA: PREGUNTA_ITEM_OPCION
+-- =============================================================================
+CREATE TABLE pregunta_item_opcion (
+    pregunta_id BIGINT NOT NULL,
+    item_opcion_id BIGINT NOT NULL,
+    ponderacion DECIMAL(4, 2) NOT NULL,
+
+    CONSTRAINT pk_pregunta_item_opcion PRIMARY KEY (pregunta_id, item_opcion_id),
+    CONSTRAINT fk_pregunta_item_opcion_pregunta FOREIGN KEY (pregunta_id)
+        REFERENCES pregunta(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_pregunta_item_opcion_item FOREIGN KEY (item_opcion_id)
+        REFERENCES item_opcion(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_pregunta_item_opcion_ponderacion CHECK (ponderacion >= 0)
+);
