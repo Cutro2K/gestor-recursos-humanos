@@ -7,7 +7,7 @@ Repositorio oficial del Trabajo Práctico de la cátedra **Desarrollo de Softwar
 ## Integrantes del Grupo
 
 * **Cutro Tomás Nehuén** — 29752 / tomascutro18@gmail.com
-* **Integrante 2** — Legajo / Email
+* **Gonzalez Bustamante Joaquin** — 29834 / joaquin200589@gmail.com
 * **Integrante 3** — Legajo / Email
 * **Integrante 4** — Legajo / Email
 
