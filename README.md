@@ -8,7 +8,7 @@ Repositorio oficial del Trabajo Práctico de la cátedra **Desarrollo de Softwar
 
 * **Cutro Tomás Nehuén** — 29752 / tomascutro18@gmail.com
 * **Gonzalez Bustamante Joaquin** — 29834 / joaquin200589@gmail.com
-* **Integrante 3** — Legajo / Email
+* **Yoris Bertschi Thiago** — 29976 / thiagoyorisbertschi@gmail.com
 * **Integrante 4** — Legajo / Email
 
 ---
