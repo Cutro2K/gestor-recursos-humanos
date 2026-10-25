@@ -1,6 +1,15 @@
+-- =============================================================================
+-- DEFINICIONES: 
+-- snapshot: (guardado temporal de estado).
+-- ON DELETE RESTRICT: Prohibe la eliminación de las columnas donde se encuentren
+-- los id's relacionados con esta tabla, hasta que la misma sea eliminada primero.
+-- =============================================================================
+
 -- [PBI-1] Consultor y Candidato
 -- =============================================================================
 -- TABLA: CONSULTOR
+-- Usuarios internos de RRHH habilitados para autenticarse (CU 01), administrar
+-- los catálogos de perfiles/preguntas y gestionar evaluaciones de candidatos.
 -- =============================================================================
 CREATE TABLE consultor (
     id BIGSERIAL PRIMARY KEY,
@@ -18,6 +27,8 @@ CREATE TABLE consultor (
 
 -- =============================================================================
 -- TABLA: CANDIDATO
+-- Postulantes importados o registrados en el sistema (CU 06) que pueden ser
+-- asignados a evaluaciones y acceder a resolver sus cuestionarios mediante su clave.
 -- =============================================================================
 CREATE TABLE candidato (
     id BIGSERIAL PRIMARY KEY,
@@ -42,6 +53,8 @@ CREATE TABLE candidato (
 -- [PBI-2] Puesto, Competencia, Puesto_Competencia y Factor
 -- =============================================================================
 -- TABLA: PUESTO
+-- Define los cargos o perfiles laborales de las empresas clientes sobre
+-- los cuales se estructuran las competencias requeridas para evaluar candidatos.
 -- =============================================================================
 CREATE TABLE puesto (
     id BIGSERIAL PRIMARY KEY,
@@ -57,6 +70,8 @@ CREATE TABLE puesto (
 
 -- =============================================================================
 -- TABLA: COMPETENCIA
+-- Catálogo de habilidades técnicas o actitudinales (CU 13) que componen el perfil
+-- de un puesto y se evalúan a través de sus factores asociados.
 -- =============================================================================
 CREATE TABLE competencia (
     id BIGSERIAL PRIMARY KEY,
@@ -73,6 +88,8 @@ CREATE TABLE competencia (
 
 -- =============================================================================
 -- TABLA INTERMEDIA: PUESTO_COMPETENCIA
+-- Tabla intermedia que vincula cada puesto con las competencias que requiere evaluar,
+-- definiendo la ponderación mínima (0 a 10) exigida para aprobar cada una.
 -- =============================================================================
 CREATE TABLE puesto_competencia (
     puesto_id BIGINT NOT NULL,
@@ -80,8 +97,6 @@ CREATE TABLE puesto_competencia (
     ponderacion_minima DECIMAL(4, 2) NOT NULL,
 
     CONSTRAINT pk_puesto_competencia PRIMARY KEY (puesto_id, competencia_id),
-    --- El ON DELETE RESTRICT Prohibe la eliminación de las columnas donde se encuentren
-    --- los id's relacionados con esta tabla, hasta que la misma sea eliminada primero.
     CONSTRAINT fk_puesto_competencia_puesto FOREIGN KEY (puesto_id)
         REFERENCES puesto(id) ON DELETE RESTRICT, 
     CONSTRAINT fk_puesto_competencia_competencia FOREIGN KEY (competencia_id)
@@ -92,6 +107,8 @@ CREATE TABLE puesto_competencia (
 
 -- =============================================================================
 -- TABLA: FACTOR
+-- Subdimensiones o aspectos específicos (CU 17) en los que se desglosa una competencia
+-- y que agrupan directamente a las preguntas del banco de evaluación.
 -- =============================================================================
 CREATE TABLE factor (
     id BIGSERIAL PRIMARY KEY,
@@ -113,6 +130,7 @@ CREATE TABLE factor (
 -- [PBI-3] Opciones de Respuesta, Ítems de Opción, Preguntas y Ponderaciones
 -- =============================================================================
 -- TABLA: OPCION_RESPUESTA
+-- Agrupador o plantilla de respuestas reutilizable por múltiples preguntas del banco.
 -- =============================================================================
 CREATE TABLE opcion_respuesta (
     id BIGSERIAL PRIMARY KEY,
@@ -125,6 +143,8 @@ CREATE TABLE opcion_respuesta (
 
 -- =============================================================================
 -- TABLA: ITEM_OPCION
+-- Cada una de las alternativas individuales de texto (ej. "Siempre", "A veces", "Nunca")
+-- que conforman una opción de respuesta en un orden determinado.
 -- =============================================================================
 CREATE TABLE item_opcion (
     id BIGSERIAL PRIMARY KEY,
@@ -141,6 +161,8 @@ CREATE TABLE item_opcion (
 
 -- =============================================================================
 -- TABLA: PREGUNTA
+-- Banco de preguntas (CU 20) asociadas a un factor que utilizan opciones
+-- de respuesta para evaluar el nivel del candidato en dicho factor.
 -- =============================================================================
 CREATE TABLE pregunta (
     id BIGSERIAL PRIMARY KEY,
@@ -162,6 +184,8 @@ CREATE TABLE pregunta (
 
 -- =============================================================================
 -- TABLA INTERMEDIA: PREGUNTA_ITEM_OPCION
+-- Asigna el puntaje o ponderación específica (0 a 10) que otorga cada ítem de opción
+-- cuando es seleccionado como respuesta a una pregunta determinada.
 -- =============================================================================
 CREATE TABLE pregunta_item_opcion (
     pregunta_id BIGINT NOT NULL,
@@ -179,6 +203,8 @@ CREATE TABLE pregunta_item_opcion (
 -- [PBI-4] Configuración, Evaluaciones, Cuestionarios, Respuestas y Auditoría
 -- =============================================================================
 -- TABLA: CONFIGURACION_CUESTIONARIO
+-- Almacena los parámetros globales vigentes para los cuestionarios (instrucciones,
+-- tiempos máximos de resolución/inactividad, límite de accesos y preguntas por bloque).
 -- =============================================================================
 CREATE TABLE configuracion_cuestionario (
     id BIGSERIAL PRIMARY KEY,
@@ -198,6 +224,8 @@ CREATE TABLE configuracion_cuestionario (
 
 -- =============================================================================
 -- TABLA: EVALUACION
+-- Representa un proceso de evaluación iniciado por un consultor (CU 25) para cubrir
+-- un puesto específico, vinculando la configuración vigente y el lote de candidatos.
 -- =============================================================================
 CREATE TABLE evaluacion (
     id BIGSERIAL PRIMARY KEY,
@@ -217,6 +245,8 @@ CREATE TABLE evaluacion (
 
 -- =============================================================================
 -- TABLA: MODELO_EVALUACION (Snapshot)
+-- Cabecera del snapshot de la estructura del puesto al momento de
+-- crear la evaluación, aislando el proceso de cambios futuros en los catálogos.
 -- =============================================================================
 CREATE TABLE modelo_evaluacion (
     id BIGSERIAL PRIMARY KEY,
@@ -230,6 +260,8 @@ CREATE TABLE modelo_evaluacion (
 
 -- =============================================================================
 -- TABLA: MODELO_COMPETENCIA (Snapshot)
+-- Congela los datos y la ponderación mínima exigida de cada competencia asociada al
+-- puesto en el instante exacto en que se generó la evaluación.
 -- =============================================================================
 CREATE TABLE modelo_competencia (
     id BIGSERIAL PRIMARY KEY,
@@ -248,6 +280,8 @@ CREATE TABLE modelo_competencia (
 
 -- =============================================================================
 -- TABLA: MODELO_FACTOR (Snapshot)
+-- Congela los factores pertenecientes a cada competencia del modelo de evaluación,
+-- preservando su código, nombre y orden original para el cálculo posterior.
 -- =============================================================================
 CREATE TABLE modelo_factor (
     id BIGSERIAL PRIMARY KEY,
@@ -265,6 +299,8 @@ CREATE TABLE modelo_factor (
 
 -- =============================================================================
 -- TABLA: MODELO_PREGUNTA (Snapshot)
+-- Congela las preguntas activas de cada factor disponibles al momento de evaluar,
+-- sirviendo como universo base para sortear las preguntas de cada candidato.
 -- =============================================================================
 CREATE TABLE modelo_pregunta (
     id BIGSERIAL PRIMARY KEY,
@@ -281,6 +317,8 @@ CREATE TABLE modelo_pregunta (
 
 -- =============================================================================
 -- TABLA: MODELO_OPCION (Snapshot)
+-- Congela las opciones de respuesta de cada pregunta del modelo junto con su orden
+-- y ponderación exacta, garantizando que el puntaje no varíe si se edita el catálogo.
 -- =============================================================================
 CREATE TABLE modelo_opcion (
     id BIGSERIAL PRIMARY KEY,
@@ -297,6 +335,8 @@ CREATE TABLE modelo_opcion (
 
 -- =============================================================================
 -- TABLA: CUESTIONARIO
+-- Instancia individual de examen asignada a un candidato dentro de una evaluación;
+-- gestiona su clave de acceso, ciclo de vida (estados), tiempos, accesos y puntaje final.
 -- =============================================================================
 CREATE TABLE cuestionario (
     id BIGSERIAL PRIMARY KEY,
@@ -327,6 +367,8 @@ CREATE TABLE cuestionario (
 
 -- =============================================================================
 -- TABLA: BLOQUE_CUESTIONARIO
+-- Divide las preguntas sorteadas del cuestionario en páginas o bloques numerados,
+-- permitiendo guardar el avance parcial del candidato bloque por bloque (CU 26).
 -- =============================================================================
 CREATE TABLE bloque_cuestionario (
     id BIGSERIAL PRIMARY KEY,
@@ -341,6 +383,8 @@ CREATE TABLE bloque_cuestionario (
 
 -- =============================================================================
 -- TABLA: PREGUNTA_CUESTIONARIO
+-- Representa cada pregunta específica sorteada e incluida dentro de un bloque del
+-- cuestionario de un candidato, registrando su orden de aparición y si fue respondida.
 -- =============================================================================
 CREATE TABLE pregunta_cuestionario (
     id BIGSERIAL PRIMARY KEY,
@@ -358,6 +402,8 @@ CREATE TABLE pregunta_cuestionario (
 
 -- =============================================================================
 -- TABLA: OPCION_CUESTIONARIO
+-- Opciones de respuesta disponibles para una pregunta concreta del cuestionario del
+-- candidato, manteniendo la descripción y ponderación congeladas para su corrección.
 -- =============================================================================
 CREATE TABLE opcion_cuestionario (
     id BIGSERIAL PRIMARY KEY,
@@ -375,6 +421,8 @@ CREATE TABLE opcion_cuestionario (
 
 -- =============================================================================
 -- TABLA: RESPUESTA_CANDIDATO
+-- Registra la opción elegida por el candidato para cada pregunta de su cuestionario
+-- junto con la fecha y hora exacta de selección.
 -- =============================================================================
 CREATE TABLE respuesta_candidato (
     id BIGSERIAL PRIMARY KEY,
@@ -390,6 +438,8 @@ CREATE TABLE respuesta_candidato (
 
 -- =============================================================================
 -- TABLA: RESULTADO_COMPETENCIA
+-- Almacena el puntaje final obtenido por el candidato en cada competencia evaluada,
+-- utilizado para verificar si alcanza el mínimo del puesto y armar el Orden de Mérito (CU 28).
 -- =============================================================================
 CREATE TABLE resultado_competencia (
     id BIGSERIAL PRIMARY KEY,
@@ -405,6 +455,8 @@ CREATE TABLE resultado_competencia (
 
 -- =============================================================================
 -- TABLA: RESULTADO_FACTOR
+-- Almacena el puntaje parcial obtenido por el candidato desglosado por cada factor,
+-- a partir del cual se calcula el resultado de su competencia.
 -- =============================================================================
 CREATE TABLE resultado_factor (
     id BIGSERIAL PRIMARY KEY,
@@ -420,6 +472,8 @@ CREATE TABLE resultado_factor (
 
 -- =============================================================================
 -- TABLA: REGISTRO_AUDITORIA
+-- Regístro de seguridad de las acciones de alta, modificación o baja lógica
+-- realizadas por los consultores sobre las entidades del sistema.
 -- =============================================================================
 CREATE TABLE registro_auditoria (
     id BIGSERIAL PRIMARY KEY,
@@ -435,6 +489,8 @@ CREATE TABLE registro_auditoria (
 
 -- =============================================================================
 -- TABLA: REGISTRO_EJECUCION_PROCESO 
+-- Registro para auditar el inicio y finalización de procesos automáticos en
+-- segundo plano (ej. paso automático de cuestionarios vencidos al estado INCOMPLETO).
 -- =============================================================================
 CREATE TABLE registro_ejecucion_proceso (
     id BIGSERIAL PRIMARY KEY,
