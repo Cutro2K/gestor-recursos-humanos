@@ -1,4 +1,4 @@
-package com.deso.api.model;
+package com.deso.api.model.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

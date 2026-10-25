@@ -1,4 +1,4 @@
-package com.deso.api.model;
+package com.deso.api.model.entity;
 
 import com.deso.api.model.enums.TipoCompetencia;
 import jakarta.persistence.*;
