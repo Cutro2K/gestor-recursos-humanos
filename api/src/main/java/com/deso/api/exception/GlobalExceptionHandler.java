@@ -125,4 +125,19 @@ public class GlobalExceptionHandler {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
+    // 7. Credenciales inválidas en autenticación -> 401 Unauthorized
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCredencialesInvalidas(CredencialesInvalidasException ex, HttpServletRequest request) {
+        log.warn("Intento de acceso fallido en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorResponseDTO error = new ErrorResponseDTO(
+            HttpStatus.UNAUTHORIZED.value(),
+            "No Autorizado",
+            ex.getMessage(), // Aquí viajará el mensaje "Contraseña incorrecta" o "Consultor no encontrado"
+            request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
 }
