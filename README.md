@@ -35,7 +35,7 @@ Asegúrese de tener instaladas las siguientes herramientas antes de levantar el 
 * **Java JDK:** Versión 25 (o superior compatible con la configuración de `api/pom.xml`)
 * **Maven:** Incluido mediante el wrapper `./mvnw` dentro de `/api` (no requiere instalación global)
 * **PostgreSQL:** Versión 14 o superior (corriendo en el puerto `5432`)
-* **Node.js:** Versión 20 LTS o superior (junto con `npm`)
+* **Node.js:** Versión 22.12 o superior (junto con `npm`); se recomienda Node.js 24 para el frontend y ReactUILib.
 
 ---
 
@@ -127,6 +127,93 @@ cd api
    ```
 
 * La aplicación web estará disponible en el navegador en: **`http://localhost:3000`**
+
+### Layout y navegación base (PBI-03)
+
+El inicio presenta los accesos al proceso de evaluación y los catálogos. La barra
+lateral permite navegar a candidatos, puestos, competencias, factores, preguntas,
+opciones de respuesta, evaluaciones, cuestionarios y orden de mérito. En pantallas
+pequeñas se despliega con el botón de navegación. Cada sección tiene una ruta
+propia y una página base; las operaciones de negocio corresponden a los siguientes
+PBIs y todavía no están implementadas. La navegación no aplica permisos por rol:
+la autenticación corresponde al PBI-04.
+
+- `src/components/layout/`: estructura compartida y páginas base de sección.
+- `src/components/layout/app-shell.module.css`: posición de la navegación y
+  distribución de las áreas en escritorio y móvil; no redefine controles.
+- `src/components/ui/`: encabezados, enlaces de sección, iconos y mensajes de feedback.
+- `src/config/sections.ts`: nombres, rutas, descripciones y relaciones entre secciones.
+- `src/app/loading.tsx`, `error.tsx` y `not-found.tsx`: estados comunes de navegación.
+- `src/service/api.ts`: cliente HTTP con `fetch`, URL configurable mediante
+  `NEXT_PUBLIC_API_URL` y valor por defecto `http://localhost:8080/api`.
+
+Ejemplo para un futuro servicio de competencias:
+
+```ts
+import { apiRequest } from "@/service/api";
+
+type Competencia = { id: number; nombre: string };
+const competencias = await apiRequest<Competencia[]>("/competencias");
+// POST: apiRequest<Competencia>("/competencias", { method: "POST", json: datos });
+// Para archivos: { method: "POST", body: formData }, sin Content-Type manual.
+// ApiError expone message, status y details; status 0 indica fallo de conexión.
+// Las respuestas vacías (por ejemplo, HTTP 204) devuelven undefined.
+```
+
+Desde `frontend/`, ejecutá `npm test` para verificar JSON, errores HTTP, respuestas
+vacías, carga de archivos y cancelación sin necesitar el backend; `npm run lint`
+y `npm run build` validan el frontend. Para probar la API real, Spring Boot debe
+estar iniciado y permitir CORS desde el origen del frontend (configuración prevista
+en PBI-02).
+
+### Componentes de interfaz (ReactUILib)
+
+El frontend instala `react-ui-lib` desde `frontend/react-ui-lib-0.1.0.tgz`;
+`npm install` dentro de `frontend/` también instala sus dependencias. El archivo
+`.tgz` debe acompañar al proyecto para que la instalación funcione en otras máquinas.
+
+`src/app/layout.tsx` importa el CSS compilado de la biblioteca antes de los estilos
+de la aplicación. `src/app/providers.tsx` es un componente de cliente que configura
+`UIProvider` con el tema y movimiento del sistema, y `ToastProvider` para las
+notificaciones. Un botón temporal de sol/luna junto al avatar permite alternar
+entre **Claro** y **Oscuro** para previsualizar los temas. Inicialmente se respeta
+la preferencia del sistema si no hay una elección guardada. La preferencia se guarda en
+`localStorage` con la clave `capital-humano-theme` y se sincroniza entre pestañas.
+Si el almacenamiento está bloqueado, el cambio funciona durante la sesión de la
+pestaña. El botón también está disponible en el encabezado móvil. Los componentes y
+sus portales comparten el tema mediante `src/components/theme/theme-provider.tsx`.
+El layout permanece como componente de servidor y monta
+`AppShell`, que conserva la navegación compartida.
+
+Los controles conservan la apariencia predeterminada de ReactUILib: `Sidebar`
+para navegación, `Button` para el cambio de tema, `Surface` para tarjetas y paneles,
+`Stack` para agrupación y espaciado. La marca junto al título usa el SVG
+`frontend/public/brand/gestor-rrhh.svg`, diseñado en
+[Figma](https://www.figma.com/design/yuMkPEz9GT1FyiyOu2vrka?node-id=2-5)
+como símbolo de personas y crecimiento, con fondo transparente.
+Los iconos SVG de entrada y salida del menú de cuenta también están diseñados en
+[Figma](https://www.figma.com/design/yuMkPEz9GT1FyiyOu2vrka?node-id=7-26) y se
+renderizan con `currentColor` en `src/components/ui/icon.tsx`. La opción
+**Cerrar sesión** usa la variante `destructive` de la biblioteca, con texto e
+icono blancos. Las acciones de sesión muestran avisos hasta conectar la autenticación.
+Los mensajes en línea se componen con `Surface` y `Stack`, ya que la
+biblioteca no ofrece un componente de alerta en línea. Los enlaces usan Next.js
+`Link`; las grillas y la tipografía usan utilidades de Tailwind y los tokens
+`--ui-*` de la biblioteca. `globals.css` sólo importa Tailwind, aplica la fuente
+y sincroniza el esquema de color del navegador. Evitá redefinir bordes, sombras,
+radios, colores o animaciones internos de los componentes de la biblioteca.
+
+La página **`http://localhost:3000/ui`** permite probar botones, validación de un
+campo, notificaciones y una ventana modal, sin necesitar el backend ni guardar
+datos. Los componentes que usen estado, eventos o `useToast()` deben llevar
+`"use client"` al principio de su archivo. Importá los controles desde
+`react-ui-lib`, por ejemplo: `import { Button, TextField } from "react-ui-lib"`.
+
+Para actualizar la biblioteca, copiá el nuevo `.tgz` a `frontend/`, ejecutá
+`npm install ./react-ui-lib-<version>.tgz` desde esa carpeta y verificá
+`npm run lint` y `npm run build`. Versioná el paquete, `package.json` y
+`package-lock.json` juntos. Los estilos de la biblioteca cargan la fuente
+Sansation desde Google Fonts; si no está disponible, se usa una fuente del sistema.
 
 ---
 

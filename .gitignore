@@ -14,3 +14,7 @@ api/.gradle/
 .vscode/
 .DS_Store
 .env*
+
+# Local agent instructions
+/AGENTS.md
+/frontend/AGENTS.md

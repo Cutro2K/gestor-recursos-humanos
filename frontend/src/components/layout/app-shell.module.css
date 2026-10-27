@@ -1,0 +1,57 @@
+/* Application placement only. ReactUILib owns component appearance. */
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 100dvh;
+  padding: 16px;
+}
+
+.navigation {
+  display: none;
+}
+
+.navigationOpen {
+  display: block;
+  height: min(65dvh, 38rem);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .navigation {
+    display: block;
+    position: sticky;
+    top: 16px;
+    grid-column: 1;
+    grid-row: 1 / -1;
+    height: calc(100dvh - 32px);
+  }
+
+  .header {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .content {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .footer {
+    grid-column: 2;
+    grid-row: 3;
+  }
+}
