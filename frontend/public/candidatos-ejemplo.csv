@@ -1,0 +1,3 @@
+Nro candidato;Apellido;Nombre;Nro documento;Tipo documento;Fecha de nacimiento;Género;Nacionalidad;Email;Escolaridad;Eliminado
+101;Pérez;Ana;00123456;DNI;1996-02-29;M;Argentina;ana@example.test;Universitario;False
+102;Gómez;Luis;AB001234;PP;1990-05-20;H;Uruguay;luis@example.test;Secundario;False

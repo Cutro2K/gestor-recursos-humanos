@@ -14,11 +14,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /*
     GlobalExceptionHandler: 
@@ -31,6 +38,76 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 @Slf4j  // Anotación para utilzar la log function de la lombok
 @RestControllerAdvice 
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(FormatoCsvException.class)
+	public ResponseEntity<ErrorResponseDTO> handleFormatoCsv(FormatoCsvException ex, HttpServletRequest request) {
+		return respuestaError(HttpStatus.BAD_REQUEST, "CSV inválido", ex.getMessage(), request);
+	}
+
+	@ExceptionHandler(MissingServletRequestPartException.class)
+	public ResponseEntity<ErrorResponseDTO> handleArchivoFaltante(
+			MissingServletRequestPartException ex, HttpServletRequest request) {
+
+		return respuestaError(HttpStatus.BAD_REQUEST, "Archivo faltante",
+				"Debe enviar el archivo en el campo multipart '" + ex.getRequestPartName() + "'.", request);
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public ResponseEntity<ErrorResponseDTO> handleArchivoGrande(
+			MaxUploadSizeExceededException ex, HttpServletRequest request) {
+
+		return respuestaError(HttpStatus.PAYLOAD_TOO_LARGE, "Carga demasiado grande",
+				"El archivo o la petición supera el tamaño máximo permitido.", request);
+	}
+
+	@ExceptionHandler(MultipartException.class)
+	public ResponseEntity<ErrorResponseDTO> handleMultipart(MultipartException ex, HttpServletRequest request) {
+		return respuestaError(HttpStatus.BAD_REQUEST, "Carga inválida",
+				"No se pudo interpretar la carga multipart. Enviá un archivo en el campo 'archivo'.", request);
+	}
+
+	@ExceptionHandler(HandlerMethodValidationException.class)
+	public ResponseEntity<ErrorResponseDTO> handleParametrosInvalidos(
+			HandlerMethodValidationException ex, HttpServletRequest request) {
+
+		Map<String, String> errores = new HashMap<>();
+
+		ex.getParameterValidationResults().forEach(resultado -> {
+			String parametro = resultado.getMethodParameter().getParameterName();
+
+			resultado.getResolvableErrors().forEach(error -> errores.put(parametro, error.getDefaultMessage()));
+		});
+
+		ErrorResponseDTO respuesta = new ErrorResponseDTO(
+				LocalDateTime.now(), ex.getStatusCode().value(), "Parámetros inválidos",
+				"Revisá los parámetros de la consulta.", request.getRequestURI(), errores);
+
+		return ResponseEntity.status(ex.getStatusCode()).contentType(MediaType.APPLICATION_JSON).body(respuesta);
+	}
+
+	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+	public ResponseEntity<ErrorResponseDTO> handleContentType(
+			HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+
+		return respuestaError(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Tipo de contenido no admitido",
+				"El Content-Type enviado no es compatible con este endpoint.", request);
+	}
+
+	@ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+	public ResponseEntity<ErrorResponseDTO> handleAccept(
+			HttpMediaTypeNotAcceptableException ex, HttpServletRequest request) {
+
+		return respuestaError(HttpStatus.NOT_ACCEPTABLE, "Formato de respuesta no admitido",
+				"El formato solicitado en Accept no es compatible con este endpoint.", request);
+	}
+
+	private ResponseEntity<ErrorResponseDTO> respuestaError(
+			HttpStatus estado, String titulo, String mensaje, HttpServletRequest request) {
+
+		ErrorResponseDTO respuesta = new ErrorResponseDTO(estado.value(), titulo, mensaje, request.getRequestURI());
+
+		return ResponseEntity.status(estado).contentType(MediaType.APPLICATION_JSON).body(respuesta);
+	}
 
     // 1. Validaciones de DTOs (@Valid) -> 400 Bad Request
     @ExceptionHandler(MethodArgumentNotValidException.class)
