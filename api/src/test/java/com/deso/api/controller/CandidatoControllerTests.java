@@ -1,6 +1,6 @@
 package com.deso.api.controller;
 
-import com.deso.api.dao.CandidatoDAO;
+import com.deso.api.dao.DAOCandidato;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.model.enums.TipoDocumento;
 import org.junit.jupiter.api.AfterEach;
@@ -49,7 +49,7 @@ class CandidatoControllerTests {
 	private int puerto;
 
 	@Autowired
-	private CandidatoDAO dao;
+	private DAOCandidato dao;
 
 	@Autowired
 	private JdbcTemplate jdbc;

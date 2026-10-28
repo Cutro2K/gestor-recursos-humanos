@@ -1,6 +1,6 @@
 package com.deso.api.service;
 
-import com.deso.api.dao.CandidatoDAO;
+import com.deso.api.dao.DAOCandidato;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.model.enums.TipoDocumento;
 import jakarta.persistence.EntityManager;
@@ -33,7 +33,7 @@ class GestorCandidatosIntegrationTests {
 	private GestorCandidatos gestor;
 
 	@Autowired
-	private CandidatoDAO dao;
+	private DAOCandidato dao;
 
 	@Autowired
 	private EntityManager entityManager;

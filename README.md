@@ -60,6 +60,15 @@ Asegúrese de tener instaladas las siguientes herramientas antes de levantar el 
 
 ## 2. Configuración y Ejecución del Backend (`/api`)
 
+### Separación de los DAOs
+
+Cada objeto utiliza una clase abstracta `DAOObjeto` como contrato y una clase
+`DAOPostgreSQLObjeto` que la extiende e implementa el acceso a PostgreSQL mediante JPA.
+Para candidatos, `GestorCandidatos` recibe `DAOCandidato` por constructor y Spring
+inyecta `DAOPostgreSQLCandidato`, que concentra las consultas JPA y las
+transacciones de persistencia. Las reglas de negocio permanecen en el gestor;
+sus pruebas unitarias simulan el contrato abstracto.
+
 ### Aviso importante sobre Variables de Entorno
 
 El archivo [`api/src/main/resources/application.properties`](api/src/main/resources/application.properties) está configurado utilizando variables de entorno con **valores por defecto**:

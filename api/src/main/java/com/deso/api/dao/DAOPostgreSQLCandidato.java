@@ -16,16 +16,16 @@ import java.util.Optional;
 @Repository
 @Scope(ConfigurableBeanFactory.SCOPE_SINGLETON)
 @Transactional(readOnly = true)
-public class CandidatoDAO {
+public class DAOPostgreSQLCandidato extends DAOCandidato {
 
 	private final EntityManager entityManager;
 
 	/** Spring crea una instancia por contexto e inyecta un EntityManager asociado a cada transacción. */
-	public CandidatoDAO(EntityManager entityManager) {
+	public DAOPostgreSQLCandidato(EntityManager entityManager) {
 		this.entityManager = entityManager;
 	}
 
-	/** Página ordenada por ID; las búsquedas de identidad para importar siguen incluyendo bajas. */
+	@Override
 	public List<Candidato> listarActivos(
 			String apellido, String nombre, Long nroCandidato, Long cursor, int cantidad) {
 
@@ -59,14 +59,14 @@ public class CandidatoDAO {
 		return "%" + texto + "%";
 	}
 
-	/** Identificador del sistema de origen usado para clasificar las filas del CSV del CU06. */
+	@Override
 	public Optional<Candidato> buscarPorNumeroCandidato(Long numero) {
 		return entityManager.createQuery("select c from Candidato c where c.nroCandidato = :numero", Candidato.class)
 				.setParameter("numero", numero)
 				.getResultList().stream().findFirst();
 	}
 
-	/** Incluye candidatos dados de baja para poder detectar identidades existentes al importar. */
+	@Override
 	public Optional<Candidato> buscarPorDocumento(TipoDocumento tipoDocumento, String nroDocumento) {
 		return entityManager.createQuery("""
 				select c from Candidato c
@@ -79,7 +79,7 @@ public class CandidatoDAO {
 				.findFirst();
 	}
 
-	/** El email no es único en el modelo; devuelve todas las coincidencias, incluidas las bajas. */
+	@Override
 	public List<Candidato> buscarPorEmail(String email) {
 		return entityManager.createQuery("""
 				select c from Candidato c
@@ -90,11 +90,7 @@ public class CandidatoDAO {
 				.getResultList();
 	}
 
-	/**
-	 * Guarda el lote en una única transacción: inserta entidades sin ID y actualiza las que tienen ID.
-	 * Devuelve las instancias administradas por JPA. La identificación de duplicados y las reglas
-	 * de actualización corresponden al servicio de importación.
-	 */
+	@Override
 	@Transactional
 	public List<Candidato> guardarLote(List<Candidato> candidatos) {
 		if (candidatos.isEmpty()) {

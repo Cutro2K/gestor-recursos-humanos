@@ -23,11 +23,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
 		"logging.file.name=target/candidato-dao-tests.log"
 })
-@Import({CandidatoDAO.class, PersistenceExceptionTranslationPostProcessor.class})
-class CandidatoDAOTests {
+@Import({DAOPostgreSQLCandidato.class, PersistenceExceptionTranslationPostProcessor.class})
+class DAOPostgreSQLCandidatoTests {
 
 	@Autowired
-	private CandidatoDAO candidatoDAO;
+	private DAOCandidato candidatoDAO;
 
 	@Autowired
 	private EntityManager entityManager;
@@ -37,10 +37,11 @@ class CandidatoDAOTests {
 
 	@Test
 	void springReutilizaLaMismaInstanciaDelDAO() {
-		String[] nombres = applicationContext.getBeanNamesForType(CandidatoDAO.class);
+		String[] nombres = applicationContext.getBeanNamesForType(DAOCandidato.class);
 		assertThat(nombres).hasSize(1);
 		assertThat(applicationContext.isSingleton(nombres[0])).isTrue();
 		assertThat(applicationContext.getBean(nombres[0])).isSameAs(candidatoDAO);
+		assertThat(applicationContext.getBean(DAOPostgreSQLCandidato.class)).isSameAs(candidatoDAO);
 	}
 
 	@Test
