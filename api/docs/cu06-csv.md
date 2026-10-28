@@ -62,21 +62,23 @@ El parser no persiste ni decide actualizaciones, duplicados o bajas:
    válidas** y se informa cuáles se rechazaron, junto con los totales realizados.
 
 Los colores, el modal y la selección de archivos corresponden a las futuras
-subtareas de frontend. Los endpoints corresponden a la subtarea de controller.
-Este cambio implementa los métodos de servicio que van a utilizar.
+subtareas de frontend. Los endpoints HTTP ya están implementados y delegan en
+los métodos del servicio que se describen a continuación.
 
 ## Previsualización y confirmación en el servicio
 
-Los únicos DTO públicos de esta funcionalidad son:
+Los DTO públicos de esta funcionalidad son:
 
 - `PrevisualizacionCandidatosDTO`: contiene la preview. Agrupa los tipos anidados
   `Fila`, `Accion`, `ErrorFila` y `ResumenErrores`.
 - `ResultadoImportacionCandidatosDTO`: contiene los totales y errores después del
   guardado; reutiliza los tipos de error y resumen de la previsualización.
+- `ListadoCandidatosDTO`: contiene una página de candidatos activos y el cursor
+  para continuar. Su tipo `CandidatoResumen` está anidado en el mismo archivo.
 
 Las estructuras de datos convertidos, fila parseada y resultado de parseo son
-records internos de `GestorCandidatos`. El controller solo necesita los dos
-métodos públicos siguientes y sus DTO de respuesta.
+records internos de `GestorCandidatos`. El controller utiliza los métodos públicos
+de previsualización, importación y listado y sus DTO de respuesta.
 
 `previsualizarCSV(InputStream)` consulta la base sin guardar ni modificar entidades.
 Devuelve las filas con `accion` (`CREAR`, `ACTUALIZAR`, `ELIMINAR`, `RECHAZAR`),
@@ -112,3 +114,99 @@ todo el lote válido y se propaga; no se devuelve un resumen de éxito parcial.
 Pruebas unitarias sin base de datos:
 `mvn -Dtest=GestorCandidatosTests,ImportacionCandidatosTests test`.
 Las pruebas de integración del servicio usan H2 en memoria.
+
+## Endpoints HTTP
+
+Base local: `http://localhost:8080/api/candidatos`.
+Las respuestas utilizan JSON y el formato existente `ErrorResponseDTO` para
+errores HTTP (`timestamp`, `status`, `error`, `message`, `path` y, cuando aplica,
+`erroresValidacion`). Las rutas se mantienen bajo `/api`; las extensiones futuras
+del contrato deben ser aditivas.
+
+### Previsualizar y confirmar
+
+| Método | Ruta | Resultado con HTTP 200 |
+| --- | --- | --- |
+| POST | `/previsualizar` | `PrevisualizacionCandidatosDTO`, sin persistir |
+| POST | `/importar` | `ResultadoImportacionCandidatosDTO`, después de guardar las filas válidas |
+
+Ambas rutas reciben `multipart/form-data` con un archivo en el campo `archivo`.
+Debe tener extensión `.csv` (sin distinguir mayúsculas) y contenido UTF-8.
+Se acepta el MIME enviado por el navegador; el parser valida el contenido.
+El archivo puede ocupar hasta 2 MiB y la petición multipart completa hasta 3 MiB,
+según `spring.servlet.multipart.max-file-size` y `max-request-size`.
+
+```bash
+curl -F 'archivo=@candidatos.csv' http://localhost:8080/api/candidatos/previsualizar
+curl -F 'archivo=@candidatos.csv' http://localhost:8080/api/candidatos/importar
+```
+
+La confirmación debe volver a enviar el archivo. Las acciones de una preview
+anterior no se reciben como instrucciones de escritura: se calculan nuevamente
+contra la base. Reenviar un CSV vuelve a procesarlo por número de candidato y
+no crea duplicados de ese número; no hay caché de respuestas de importación y
+las estadísticas de un reintento pueden cambiar (por ejemplo, un alta pasa a
+contar como actualización).
+
+Los errores de filas se devuelven con HTTP 200 dentro del reporte, incluso si
+todas fueron rechazadas. El consumidor debe revisar `rechazadas` en la preview
+y `rechazados` en la confirmación, además de los totales de operaciones.
+
+### Listar candidatos para CU25
+
+`GET /api/candidatos` devuelve candidatos activos ordenados por ID ascendente.
+
+| Parámetro opcional | Comportamiento |
+| --- | --- |
+| `apellido` | Contiene el texto, sin distinguir mayúsculas; máximo 50 caracteres |
+| `nombre` | Contiene el texto, sin distinguir mayúsculas; máximo 50 caracteres |
+| `nroCandidato` | Coincidencia exacta; entero positivo |
+| `limite` | Tamaño de página: 50 por defecto, entre 1 y 100 |
+| `cursor` | Último ID de la página anterior; entero positivo |
+
+Los filtros se combinan con AND, omiten espacios externos y tratan `%`, `_` y
+`!` como texto literal. Filtros de texto vacíos no restringen resultados.
+
+```bash
+curl --get http://localhost:8080/api/candidatos \
+  --data-urlencode 'apellido=Pérez' \
+  --data-urlencode 'limite=50'
+```
+
+Ejemplo de una página con más resultados:
+
+```json
+{
+  "candidatos": [
+    {
+      "id": 21,
+      "nroCandidato": 100,
+      "apellido": "Pérez",
+      "nombre": "Ana",
+      "tipoDocumento": "DNI",
+      "nroDocumento": "00123456",
+      "email": "ana@example.test"
+    }
+  ],
+  "siguienteCursor": 21
+}
+```
+
+Para continuar, enviar `cursor=21` conservando los filtros y el límite.
+`siguienteCursor` es `null` cuando no hay más resultados. Una búsqueda sin
+coincidencias devuelve `{"candidatos": [], "siguienteCursor": null}` con HTTP 200.
+El cursor utiliza el ID interno, no el número de candidato del CSV.
+
+### Errores HTTP
+
+| Estado | Situación |
+| --- | --- |
+| 400 | Archivo faltante o vacío, extensión/UTF-8/estructura CSV inválidos, parámetros de consulta inválidos o multipart mal formado |
+| 406 | El cliente solicita en `Accept` un formato de respuesta incompatible |
+| 409 | Fallo de integridad al guardar, por ejemplo por un cambio concurrente; se revierte el lote válido |
+| 413 | Archivo o petición multipart por encima del límite configurado |
+| 415 | `Content-Type` incompatible; las cargas deben usar `multipart/form-data` |
+| 500 | Error interno inesperado o fallo técnico de lectura |
+
+`CandidatoControllerTests` prueba las rutas con un servidor HTTP real en un puerto
+aleatorio y una base H2 en memoria, incluidos los límites de carga multipart.

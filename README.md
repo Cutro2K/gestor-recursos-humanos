@@ -224,7 +224,9 @@ A continuación se listan los Casos de Uso implementados y sus respectivos endpo
 | Caso de Uso | Método HTTP | Endpoint | Descripción |
 | :--- | :---: | :--- | :--- |
 | **CU 01:** Autenticar usuario | `POST` | `/api/auth/login` | Valida credenciales de usuario del sistema. |
-| **CU 06:** Importar candidatos | `POST` | `/api/candidatos/importar` | Importación de candidatos al sistema. |
+| **CU 06:** Previsualizar candidatos | `POST` | `/api/candidatos/previsualizar` | Recibe el CSV multipart y clasifica las filas sin guardar cambios. |
+| **CU 06:** Importar candidatos | `POST` | `/api/candidatos/importar` | Confirma el CSV multipart, importa filas válidas e informa rechazos. |
+| **CU 25:** Listar candidatos | `GET` | `/api/candidatos` | Lista candidatos activos con filtros y paginación por cursor. |
 | **CU 09:** Dar de alta puesto | `POST` | `/api/puestos` | Registra un nuevo puesto con sus características. |
 | **CU 13:** Dar de alta competencia | `POST` | `/api/competencias` | Registra una nueva competencia. |
 | **CU 17:** Dar de alta factor | `POST` | `/api/factores` | Registra un nuevo factor asociado a una competencia. |
@@ -239,3 +241,6 @@ A continuación se listan los Casos de Uso implementados y sus respectivos endpo
 | **CU 28:** Emitir orden de mérito | `GET` | `/api/evaluaciones/{puestoId}/orden-merito` | Calcula y emite el orden de mérito de los candidatos evaluados. |
 
 *(Nota: Las rutas exactas de los endpoints se irán actualizando a medida que se completen los controladores de cada Caso de Uso).*
+
+El contrato de los endpoints de candidatos y ejemplos con `curl` están en
+[api/docs/cu06-csv.md](api/docs/cu06-csv.md#endpoints-http).

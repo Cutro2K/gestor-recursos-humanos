@@ -1,6 +1,8 @@
 package com.deso.api.service;
 
 import com.deso.api.dao.CandidatoDAO;
+import com.deso.api.dto.ListadoCandidatosDTO;
+import com.deso.api.dto.ListadoCandidatosDTO.CandidatoResumen;
 import com.deso.api.dto.PrevisualizacionCandidatosDTO;
 import com.deso.api.dto.PrevisualizacionCandidatosDTO.Accion;
 import com.deso.api.dto.PrevisualizacionCandidatosDTO.ErrorFila;
@@ -63,6 +65,25 @@ public class GestorCandidatos {
 	public GestorCandidatos(Validator validator, CandidatoDAO candidatoDAO) {
 		this.validator = validator;
 		this.candidatoDAO = candidatoDAO;
+	}
+
+	@Transactional(readOnly = true)
+	public ListadoCandidatosDTO listarCandidatos(
+			String apellido, String nombre, Long nroCandidato, Long cursor, int limite) {
+
+		List<Candidato> encontrados = candidatoDAO.listarActivos(apellido, nombre, nroCandidato, cursor, limite + 1);
+		boolean hayMas = encontrados.size() > limite;
+		List<Candidato> pagina = encontrados.subList(0, Math.min(limite, encontrados.size()));
+
+		List<CandidatoResumen> candidatos = pagina.stream()
+				.map(candidato -> new CandidatoResumen(
+						candidato.getId(), candidato.getNroCandidato(), candidato.getApellido(), candidato.getNombre(),
+						candidato.getTipoDocumento(), candidato.getNroDocumento(), candidato.getEmail()))
+				.toList();
+
+		Long siguienteCursor = hayMas ? pagina.getLast().getId() : null;
+
+		return new ListadoCandidatosDTO(candidatos, siguienteCursor);
 	}
 
 	/** Clasifica por nroCandidato sin persistir ni modificar entidades administradas por JPA. */

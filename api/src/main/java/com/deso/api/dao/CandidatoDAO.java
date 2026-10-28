@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Repository
@@ -22,6 +23,40 @@ public class CandidatoDAO {
 	/** Spring crea una instancia por contexto e inyecta un EntityManager asociado a cada transacción. */
 	public CandidatoDAO(EntityManager entityManager) {
 		this.entityManager = entityManager;
+	}
+
+	/** Página ordenada por ID; las búsquedas de identidad para importar siguen incluyendo bajas. */
+	public List<Candidato> listarActivos(
+			String apellido, String nombre, Long nroCandidato, Long cursor, int cantidad) {
+
+		return entityManager.createQuery("""
+				select c from Candidato c
+				where c.eliminado = false
+				and (:apellido is null or lower(c.apellido) like :apellido escape '!')
+				and (:nombre is null or lower(c.nombre) like :nombre escape '!')
+				and (:numero is null or c.nroCandidato = :numero)
+				and (:cursor is null or c.id > :cursor)
+				order by c.id
+				""", Candidato.class)
+				.setParameter("apellido", patronDeBusqueda(apellido))
+				.setParameter("nombre", patronDeBusqueda(nombre))
+				.setParameter("numero", nroCandidato)
+				.setParameter("cursor", cursor)
+				.setMaxResults(cantidad)
+				.getResultList();
+	}
+
+	private String patronDeBusqueda(String valor) {
+		if (valor == null || valor.isBlank()) {
+			return null;
+		}
+
+		String texto = valor.strip().toLowerCase(Locale.ROOT)
+				.replace("!", "!!")
+				.replace("%", "!%")
+				.replace("_", "!_");
+
+		return "%" + texto + "%";
 	}
 
 	/** Identificador del sistema de origen usado para clasificar las filas del CSV del CU06. */
