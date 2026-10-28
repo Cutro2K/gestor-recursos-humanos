@@ -61,9 +61,29 @@ El parser no persiste ni decide actualizaciones, duplicados o bajas:
 5. El usuario confirma con el botón de finalizar. Se importan **solo las filas
    válidas** y se informa cuáles se rechazaron, junto con los totales realizados.
 
-Los colores, el modal y la selección de archivos corresponden a las futuras
-subtareas de frontend. Los endpoints HTTP ya están implementados y delegan en
-los métodos del servicio que se describen a continuación.
+El frontend implementa este flujo como un modal dentro de `/candidatos`.
+No se crea `candidatos/importar/page.tsx`: la importación conserva la URL de
+Candidatos y los componentes del modal viven en `src/components/candidatos/`.
+Los endpoints HTTP delegan en los métodos del servicio que se describen a continuación.
+
+La página consulta candidatos activos, permite filtrar por apellido, nombre y
+número, y carga páginas adicionales por cursor. Al terminar la importación se
+actualiza el listado conservando los filtros aplicados.
+
+El modal utiliza `Modal`, `Button`, `Surface`, `Stack`, `Tabs`, `Spinner` y
+`useToast` de ReactUILib. La tabla y el área de arrastre utilizan HTML semántico.
+Los colores de las acciones también se acompañan con etiquetas de texto.
+La preview muestra 25 filas por página, permite filtrar por acción y abrir el
+detalle de los 11 campos y sus errores. El reporte final también se pagina.
+
+Se valida en el navegador que se seleccione un solo CSV no vacío y de hasta
+2 MiB; el backend vuelve a validar su contenido. No se puede confirmar sin filas
+válidas. Durante el guardado se deshabilitan los controles de confirmación,
+cambio de archivo y cierre para evitar envíos repetidos. Ante un fallo de
+confirmación se actualiza el listado y se solicita volver a analizar el archivo,
+sin reintentos automáticos.
+
+El CSV de ejemplo está disponible en `/candidatos-ejemplo.csv` desde el propio modal.
 
 ## Previsualización y confirmación en el servicio
 

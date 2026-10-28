@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SectionOverview } from "@/components/layout/section-overview";
+import { CandidatosPanel } from "@/components/candidatos/candidatos-panel";
 import { getSection } from "@/config/sections";
 
 export const metadata: Metadata = {
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <SectionOverview id="candidatos" />;
+  return <CandidatosPanel />;
 }

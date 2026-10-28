@@ -11,6 +11,7 @@ const paths = {
   list: "m3 6 1 1 2-2M10 6h11M3 12l1 1 2-2M10 12h11M3 18l1 1 2-2M10 18h11",
   clipboard: "M9 5H5v16h14V5h-4M9 3h6v4H9ZM8 12h8M8 16h5",
   file: "M14 2H5v20h14V7Zm0 0v5h5M8 12h8M8 16h6",
+  upload: "M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5",
   award: "M16 9a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM8 13l-2 9 6-3 6 3-2-9",
   arrow: "M5 12h14m-6-6 6 6-6 6",
   chevron: "m9 5 7 7-7 7",
