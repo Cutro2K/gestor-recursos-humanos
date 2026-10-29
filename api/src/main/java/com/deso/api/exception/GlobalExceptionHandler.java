@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponseDTO> handleArchivoGrande(
 			MaxUploadSizeExceededException ex, HttpServletRequest request) {
 
-		return respuestaError(HttpStatus.PAYLOAD_TOO_LARGE, "Carga demasiado grande",
+		return respuestaError(HttpStatus.CONTENT_TOO_LARGE, "Carga demasiado grande",
 				"El archivo o la petición supera el tamaño máximo permitido.", request);
 	}
 

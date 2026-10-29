@@ -12,7 +12,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SesionDTO {
-
     private Long sujetoId;        
     private String rol;            
 }

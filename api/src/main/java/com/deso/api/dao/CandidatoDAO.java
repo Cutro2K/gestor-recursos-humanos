@@ -1,24 +1,30 @@
 package com.deso.api.dao;
 
 import com.deso.api.model.entity.Candidato;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
+import com.deso.api.model.enums.TipoDocumento;
 
 import java.util.List;
 import java.util.Optional;
 
-@Repository
-public interface CandidatoDAO extends JpaRepository<Candidato, Long> {
-    
-    // Corresponde a +buscar(apellido, nombre, numero)
-    @Query("SELECT c FROM Candidato c WHERE " +
-            "(:apellido IS NULL OR c.apellido LIKE %:apellido%) AND " +
-            "(:nombre IS NULL OR c.nombre LIKE %:nombre%) AND " +
-            "(:numero IS NULL OR c.nroCandidato = :numero) AND " +
-            "c.eliminado = false")
-    List<Candidato> buscar(String apellido, String nombre, Long numero);
+/** Contrato de acceso a candidatos independiente del mecanismo de persistencia. */
+public interface CandidatoDAO {
 
-    // Búsqueda específica para autenticación por documento
-    Optional<Candidato> findByTipoDocumentoAndNroDocumentoAndEliminadoFalse(String tipoDocumento, String nroDocumento);
+	/** Página de candidatos activos ordenada por ID, con filtros y cursor opcionales. */
+	public List<Candidato> listarActivos(
+			String apellido, String nombre, Long nroCandidato, Long cursor, int cantidad);
+
+	/** Busca por el identificador del sistema de origen, incluyendo candidatos dados de baja. */
+	public Optional<Candidato> buscarPorNumeroCandidato(Long numero);
+
+	/** Incluye candidatos dados de baja para detectar identidades existentes al importar. */
+	public Optional<Candidato> buscarPorDocumento(TipoDocumento tipoDocumento, String nroDocumento);
+
+	/** Devuelve todas las coincidencias sin distinguir mayúsculas, incluidas las bajas, ordenadas por ID. */
+	public List<Candidato> buscarPorEmail(String email);
+
+	/**
+	 * Guarda el lote de forma atómica: inserta candidatos sin ID y actualiza los que tienen ID.
+	 * Devuelve los candidatos guardados. Las reglas de importación corresponden al servicio.
+	 */
+	public List<Candidato> guardarLote(List<Candidato> candidatos);
 }

@@ -1,6 +1,6 @@
 package com.deso.api.controller;
 
-import com.deso.api.dao.DAOCandidato;
+import com.deso.api.dao.CandidatoDAO;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.model.enums.TipoDocumento;
 import org.junit.jupiter.api.AfterEach;
@@ -49,7 +49,7 @@ class CandidatoControllerTests {
 	private int puerto;
 
 	@Autowired
-	private DAOCandidato dao;
+	private CandidatoDAO dao;
 
 	@Autowired
 	private JdbcTemplate jdbc;
@@ -76,10 +76,10 @@ class CandidatoControllerTests {
 		assertThat(cuerpo.path("aActualizar").asInt()).isEqualTo(1);
 		assertThat(cuerpo.path("aEliminar").asInt()).isEqualTo(1);
 		assertThat(cuerpo.path("rechazadas").asInt()).isEqualTo(1);
-		assertThat(cuerpo.path("filas").get(0).path("accion").asText()).isEqualTo("CREAR");
-		assertThat(cuerpo.path("filas").get(1).path("accion").asText()).isEqualTo("ACTUALIZAR");
-		assertThat(cuerpo.path("filas").get(2).path("accion").asText()).isEqualTo("ELIMINAR");
-		assertThat(cuerpo.path("filas").get(3).path("accion").asText()).isEqualTo("RECHAZAR");
+		assertThat(cuerpo.path("filas").get(0).path("accion").asString()).isEqualTo("CREAR");
+		assertThat(cuerpo.path("filas").get(1).path("accion").asString()).isEqualTo("ACTUALIZAR");
+		assertThat(cuerpo.path("filas").get(2).path("accion").asString()).isEqualTo("ELIMINAR");
+		assertThat(cuerpo.path("filas").get(3).path("accion").asString()).isEqualTo("RECHAZAR");
 		assertThat(cuerpo.path("resumenErrores").path("filasPorCampo").path("Fecha de nacimiento").asInt())
 				.isEqualTo(1);
 		assertThat(dao.buscarPorNumeroCandidato(1L)).isEmpty();
@@ -100,7 +100,7 @@ class CandidatoControllerTests {
 		assertThat(cuerpo.path("actualizados").asInt()).isEqualTo(1);
 		assertThat(cuerpo.path("eliminados").asInt()).isEqualTo(1);
 		assertThat(cuerpo.path("rechazados").asInt()).isEqualTo(1);
-		assertThat(cuerpo.path("errores").get(0).path("campo").asText()).isEqualTo("Email");
+		assertThat(cuerpo.path("errores").get(0).path("campo").asString()).isEqualTo("Email");
 		assertThat(dao.buscarPorNumeroCandidato(2L).orElseThrow().getNombre()).isEqualTo("Ana");
 		assertThat(dao.buscarPorNumeroCandidato(3L).orElseThrow().getEliminado()).isTrue();
 		assertThat(dao.buscarPorNumeroCandidato(4L)).isEmpty();
@@ -162,9 +162,9 @@ class CandidatoControllerTests {
 		assertThat(resultado.path("candidatos").size()).isEqualTo(1);
 		JsonNode candidato = resultado.path("candidatos").get(0);
 		assertThat(candidato.path("nroCandidato").asLong()).isEqualTo(1);
-		assertThat(candidato.path("tipoDocumento").asText()).isEqualTo("DNI");
-		assertThat(candidato.path("nroDocumento").asText()).isEqualTo("DOC1");
-		assertThat(candidato.path("email").asText()).isEqualTo("original@example.test");
+		assertThat(candidato.path("tipoDocumento").asString()).isEqualTo("DNI");
+		assertThat(candidato.path("nroDocumento").asString()).isEqualTo("DOC1");
+		assertThat(candidato.path("email").asString()).isEqualTo("original@example.test");
 	}
 
 	@Test
@@ -209,7 +209,7 @@ class CandidatoControllerTests {
 	@Test
 	void rechazaFiltrosDeTextoMayoresACincuentaCaracteres() throws Exception {
 		JsonNode error = comprobarError(get("?nombre=" + "a".repeat(51)), 400);
-		assertThat(error.path("erroresValidacion").path("nombre").asText()).isNotBlank();
+		assertThat(error.path("erroresValidacion").path("nombre").asString()).isNotBlank();
 	}
 
 	@ParameterizedTest
@@ -267,9 +267,9 @@ class CandidatoControllerTests {
 		JsonNode error = json.readTree(respuesta.body());
 
 		assertThat(error.path("status").asInt()).isEqualTo(status);
-		assertThat(error.path("message").asText()).isNotBlank();
-		assertThat(error.path("path").asText()).startsWith("/api/candidatos");
-		assertThat(error.path("timestamp").asText()).isNotBlank();
+		assertThat(error.path("message").asString()).isNotBlank();
+		assertThat(error.path("path").asString()).startsWith("/api/candidatos");
+		assertThat(error.path("timestamp").asString()).isNotBlank();
 
 		return error;
 	}

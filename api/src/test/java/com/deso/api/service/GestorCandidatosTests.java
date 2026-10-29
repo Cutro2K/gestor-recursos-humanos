@@ -1,6 +1,6 @@
 package com.deso.api.service;
 
-import com.deso.api.dao.DAOCandidato;
+import com.deso.api.dao.CandidatoDAO;
 import com.deso.api.dto.PrevisualizacionCandidatosDTO.ErrorFila;
 import com.deso.api.dto.PrevisualizacionCandidatosDTO.ResumenErrores;
 import com.deso.api.exception.FormatoCsvException;
@@ -38,7 +38,7 @@ class GestorCandidatosTests {
 	@BeforeAll
 	static void preparar() {
 		validatorFactory = Validation.buildDefaultValidatorFactory();
-		gestor = new GestorCandidatos(validatorFactory.getValidator(), mock(DAOCandidato.class));
+		gestor = new GestorCandidatos(validatorFactory.getValidator(), mock(CandidatoDAO.class));
 	}
 
 	@AfterAll
