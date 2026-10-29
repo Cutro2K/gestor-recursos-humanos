@@ -1,17 +1,26 @@
 "use client";
 
-import { Button, Stack } from "react-ui-lib";
-import { Feedback } from "@/components/ui/feedback";
+import { useEffect, useTransition } from "react";
+import { useToast } from "react-ui-lib";
+import { RequestError } from "@/components/ui/request-error";
 
-export default function PageError({ retry }: { error: unknown; retry: () => void }) {
+export default function PageError({ error, retry }: { error: unknown; retry: () => void }) {
+  const [retrying, startTransition] = useTransition();
+  const { error: showToast } = useToast();
+  const title = "No pudimos cargar esta sección";
+  const description = "Volvé a intentarlo. Si el problema continúa, regresá al inicio.";
+
+  useEffect(() => {
+    showToast(title, description);
+  }, [error, showToast]);
+
   return (
-    <Stack gap="lg">
-      <Feedback variant="error" title="No pudimos cargar esta sección">
-        Volvé a intentarlo. Si el problema continúa, regresá al inicio.
-      </Feedback>
-      <Button onClick={() => retry()} className="self-start">
-        Reintentar
-      </Button>
-    </Stack>
+    <RequestError
+      title={title}
+      description={description}
+      retryLabel="Reintentar"
+      retrying={retrying}
+      onRetry={() => startTransition(retry)}
+    />
   );
 }
