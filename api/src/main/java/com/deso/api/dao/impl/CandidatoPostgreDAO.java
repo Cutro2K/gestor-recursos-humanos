@@ -1,10 +1,9 @@
-package com.deso.api.dao;
+package com.deso.api.dao.impl;
 
+import com.deso.api.dao.CandidatoDAO;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.model.enums.TipoDocumento;
 import jakarta.persistence.EntityManager;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,14 +13,13 @@ import java.util.Locale;
 import java.util.Optional;
 
 @Repository
-@Scope(ConfigurableBeanFactory.SCOPE_SINGLETON)
 @Transactional(readOnly = true)
-public class DAOPostgreSQLCandidato extends DAOCandidato {
+public class CandidatoPostgreDAO implements CandidatoDAO {
 
 	private final EntityManager entityManager;
 
 	/** Spring crea una instancia por contexto e inyecta un EntityManager asociado a cada transacción. */
-	public DAOPostgreSQLCandidato(EntityManager entityManager) {
+	public CandidatoPostgreDAO(EntityManager entityManager) {
 		this.entityManager = entityManager;
 	}
 

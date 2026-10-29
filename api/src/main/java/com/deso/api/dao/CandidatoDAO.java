@@ -7,24 +7,24 @@ import java.util.List;
 import java.util.Optional;
 
 /** Contrato de acceso a candidatos independiente del mecanismo de persistencia. */
-public abstract class DAOCandidato {
+public interface CandidatoDAO {
 
 	/** Página de candidatos activos ordenada por ID, con filtros y cursor opcionales. */
-	public abstract List<Candidato> listarActivos(
+	public List<Candidato> listarActivos(
 			String apellido, String nombre, Long nroCandidato, Long cursor, int cantidad);
 
 	/** Busca por el identificador del sistema de origen, incluyendo candidatos dados de baja. */
-	public abstract Optional<Candidato> buscarPorNumeroCandidato(Long numero);
+	public Optional<Candidato> buscarPorNumeroCandidato(Long numero);
 
 	/** Incluye candidatos dados de baja para detectar identidades existentes al importar. */
-	public abstract Optional<Candidato> buscarPorDocumento(TipoDocumento tipoDocumento, String nroDocumento);
+	public Optional<Candidato> buscarPorDocumento(TipoDocumento tipoDocumento, String nroDocumento);
 
 	/** Devuelve todas las coincidencias sin distinguir mayúsculas, incluidas las bajas, ordenadas por ID. */
-	public abstract List<Candidato> buscarPorEmail(String email);
+	public List<Candidato> buscarPorEmail(String email);
 
 	/**
 	 * Guarda el lote de forma atómica: inserta candidatos sin ID y actualiza los que tienen ID.
 	 * Devuelve los candidatos guardados. Las reglas de importación corresponden al servicio.
 	 */
-	public abstract List<Candidato> guardarLote(List<Candidato> candidatos);
+	public List<Candidato> guardarLote(List<Candidato> candidatos);
 }

@@ -1,6 +1,6 @@
 package com.deso.api.service;
 
-import com.deso.api.dao.DAOCandidato;
+import com.deso.api.dao.CandidatoDAO;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.dto.PrevisualizacionCandidatosDTO.Accion;
 import com.deso.api.model.enums.TipoDocumento;
@@ -32,7 +32,7 @@ class ImportacionCandidatosTests {
 	private static final String ENCABEZADO = "Nro candidato;Apellido;Nombre;Nro documento;Tipo documento;"
 			+ "Fecha de nacimiento;Género;Nacionalidad;Email;Escolaridad;Eliminado\n";
 	private static ValidatorFactory validatorFactory;
-	private DAOCandidato dao;
+	private CandidatoDAO dao;
 	private GestorCandidatos gestor;
 
 	@BeforeAll
@@ -47,7 +47,7 @@ class ImportacionCandidatosTests {
 
 	@BeforeEach
 	void preparar() {
-		dao = mock(DAOCandidato.class);
+		dao = mock(CandidatoDAO.class);
 		gestor = new GestorCandidatos(validatorFactory.getValidator(), dao);
 	}
 

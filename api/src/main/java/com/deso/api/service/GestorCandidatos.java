@@ -1,6 +1,6 @@
 package com.deso.api.service;
 
-import com.deso.api.dao.DAOCandidato;
+import com.deso.api.dao.CandidatoDAO;
 import com.deso.api.dto.ListadoCandidatosDTO;
 import com.deso.api.dto.ListadoCandidatosDTO.CandidatoResumen;
 import com.deso.api.dto.PrevisualizacionCandidatosDTO;
@@ -60,9 +60,9 @@ public class GestorCandidatos {
 			.get();
 
 	private final Validator validator;
-	private final DAOCandidato candidatoDAO;
+	private final CandidatoDAO candidatoDAO;
 
-	public GestorCandidatos(Validator validator, DAOCandidato candidatoDAO) {
+	public GestorCandidatos(Validator validator, CandidatoDAO candidatoDAO) {
 		this.validator = validator;
 		this.candidatoDAO = candidatoDAO;
 	}

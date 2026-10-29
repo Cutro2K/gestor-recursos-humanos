@@ -1,5 +1,6 @@
 package com.deso.api.dao;
 
+import com.deso.api.dao.impl.CandidatoPostgreDAO;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.model.enums.TipoDocumento;
 import jakarta.persistence.EntityManager;
@@ -23,11 +24,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
 		"logging.file.name=target/candidato-dao-tests.log"
 })
-@Import({DAOPostgreSQLCandidato.class, PersistenceExceptionTranslationPostProcessor.class})
+@Import({CandidatoPostgreDAO.class, PersistenceExceptionTranslationPostProcessor.class})
 class DAOPostgreSQLCandidatoTests {
 
 	@Autowired
-	private DAOCandidato candidatoDAO;
+	private CandidatoDAO candidatoDAO;
 
 	@Autowired
 	private EntityManager entityManager;
@@ -37,11 +38,11 @@ class DAOPostgreSQLCandidatoTests {
 
 	@Test
 	void springReutilizaLaMismaInstanciaDelDAO() {
-		String[] nombres = applicationContext.getBeanNamesForType(DAOCandidato.class);
+		String[] nombres = applicationContext.getBeanNamesForType(CandidatoDAO.class);
 		assertThat(nombres).hasSize(1);
 		assertThat(applicationContext.isSingleton(nombres[0])).isTrue();
 		assertThat(applicationContext.getBean(nombres[0])).isSameAs(candidatoDAO);
-		assertThat(applicationContext.getBean(DAOPostgreSQLCandidato.class)).isSameAs(candidatoDAO);
+		assertThat(applicationContext.getBean(CandidatoPostgreDAO.class)).isSameAs(candidatoDAO);
 	}
 
 	@Test
