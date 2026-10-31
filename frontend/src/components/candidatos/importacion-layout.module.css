@@ -1,0 +1,96 @@
+.modal {
+  min-height: 0;
+}
+
+/* El cuerpo ocupa el espacio entre el encabezado y el footer de ReactUILib. */
+.modal > :global(.ui-morph-content) > header + div {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+}
+
+.modalBody {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.modalBody > * {
+  flex-shrink: 0;
+}
+
+/* Todas las categorías comparten el mismo espacio, incluso cuando están vacías. */
+.preview {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 24px;
+  flex: 1 0 22rem;
+  min-height: 22rem;
+}
+
+.previewTabs {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.previewPanel {
+  min-height: 0;
+}
+
+.previewPanel[data-state="active"] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* Tabs conserva contenedores vacíos: solo el panel activo debe ocupar la grilla. */
+.previewPanel[data-state="inactive"] {
+  display: none;
+}
+
+.previewRows {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+  min-height: 0;
+}
+
+.previewTableScroll {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.previewTableScroll thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.previewEmpty {
+  display: grid;
+  min-height: 0;
+  margin: 0;
+  place-items: center;
+  text-align: center;
+}
+
+.pagination {
+  flex-shrink: 0;
+  min-height: 2.25rem;
+}
+
+.tabsList {
+  justify-self: start;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.tabsList [role="tab"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .preview { flex-basis: 26rem; min-height: 26rem; }
+}
