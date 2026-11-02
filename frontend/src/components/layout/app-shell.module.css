@@ -16,6 +16,17 @@
   height: min(65dvh, 38rem);
 }
 
+/* En móvil la navegación es un panel desplegable: ocupa todo el ancho y no se contrae. */
+@media (max-width: 1023px) {
+  .navigation :global(.ui-sidebar) {
+    width: 100% !important;
+  }
+
+  .navigation :global(.ui-sidebar-toggle) {
+    display: none;
+  }
+}
+
 .content {
   display: flex;
   flex-direction: column;
@@ -29,7 +40,8 @@
 @media (min-width: 1024px) {
   .shell {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
+    /* auto: la columna sigue el ancho que anima Sidebar (260px o 76px compacta). */
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
   }
 
