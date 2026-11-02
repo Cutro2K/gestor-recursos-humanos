@@ -9,10 +9,19 @@ import { loginCandidato, loginConsultor, tiposDocumento } from "@/service/auth";
 import type { TipoDocumento } from "@/service/auth";
 import { ApiError } from "@/service/api";
 import { fadeUp, stagger } from "./fade-up";
+import {
+  LIMITES,
+  normalizarDocumento,
+  sinErrores,
+  validarCandidato,
+  validarConsultor,
+} from "./login-validation";
+import type { ErroresCandidato, ErroresConsultor } from "./login-validation";
 import { useSession } from "./session-provider";
 import styles from "./login-form.module.css";
 
 type Rol = "consultor" | "candidato";
+type Errores = ErroresConsultor & ErroresCandidato;
 
 /** Formulario del CU-01. Sus bloques se suman a la entrada escalonada de la pantalla. */
 export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
@@ -25,19 +34,38 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>("DNI");
   const [nroDocumento, setNroDocumento] = useState("");
   const [clave, setClave] = useState("");
+  const [errores, setErrores] = useState<Errores>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Cambia un campo y borra su error: el mensaje desaparece en cuanto se corrige.
+  function campo(nombre: keyof Errores, setValor: (valor: string) => void) {
+    return (valor: string) => {
+      setValor(valor);
+      setErrores((actuales) => ({ ...actuales, [nombre]: undefined }));
+    };
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+
+    // Se valida antes de llamar a la API; con errores no se envía nada.
+    const encontrados =
+      rol === "consultor"
+        ? validarConsultor(usuario, contrasena)
+        : validarCandidato(tipoDocumento, nroDocumento, clave);
+    setErrores(encontrados);
+    if (!sinErrores(encontrados)) return;
+
+    const documento = normalizarDocumento(tipoDocumento, nroDocumento);
     setLoading(true);
     try {
       const sesion =
         rol === "consultor"
-          ? await loginConsultor(usuario, contrasena)
-          : await loginCandidato(tipoDocumento, nroDocumento, clave);
-      const nombre = rol === "consultor" ? usuario : `${tipoDocumento} ${nroDocumento}`;
+          ? await loginConsultor(usuario.trim(), contrasena)
+          : await loginCandidato(tipoDocumento, documento, clave);
+      const nombre = rol === "consultor" ? usuario.trim() : `${tipoDocumento} ${documento}`;
       signIn({ ...sesion, nombre });
       toast({ title: "Sesión iniciada", description: `Bienvenido, ${nombre}.` });
       onSuccess();
@@ -54,8 +82,10 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         name="usuario"
         autoComplete="username"
         required
+        maxLength={LIMITES.usuario}
+        error={errores.usuario}
         value={usuario}
-        onChange={setUsuario}
+        onChange={campo("usuario", setUsuario)}
       />
       <TextField
         label="Contraseña"
@@ -63,8 +93,10 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         type="password"
         autoComplete="current-password"
         required
+        maxLength={LIMITES.contrasena}
+        error={errores.contrasena}
         value={contrasena}
-        onChange={setContrasena}
+        onChange={campo("contrasena", setContrasena)}
       />
     </Stack>
   );
@@ -83,7 +115,10 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
               id="tipoDocumento"
               name="tipoDocumento"
               value={tipoDocumento}
-              onChange={(event) => setTipoDocumento(event.target.value as TipoDocumento)}
+              onChange={(event) => {
+                setTipoDocumento(event.target.value as TipoDocumento);
+                setErrores((actuales) => ({ ...actuales, nroDocumento: undefined }));
+              }}
               className={styles.select}
             >
               {tiposDocumento.map((tipo) => (
@@ -96,22 +131,24 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         <TextField
           label="Número de documento"
           name="nroDocumento"
-          inputMode="numeric"
+          inputMode={tipoDocumento === "PP" ? "text" : "numeric"}
           required
+          maxLength={LIMITES.nroDocumento}
+          error={errores.nroDocumento}
           value={nroDocumento}
-          onChange={setNroDocumento}
+          onChange={campo("nroDocumento", setNroDocumento)}
         />
       </div>
       <TextField
         label="Clave del cuestionario"
         name="clave"
         type="password"
-        helpText="8 caracteres."
-        minLength={8}
-        maxLength={8}
+        helpText="8 letras o números."
         required
+        maxLength={LIMITES.clave}
+        error={errores.clave}
         value={clave}
-        onChange={setClave}
+        onChange={campo("clave", setClave)}
       />
     </Stack>
   );
@@ -130,7 +167,8 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   );
 
   return (
-    <motion.form variants={stagger} onSubmit={handleSubmit}>
+    // noValidate: se muestran los mensajes propios en lugar de los globos del navegador.
+    <motion.form variants={stagger} noValidate onSubmit={handleSubmit}>
       <Stack gap="md">
         <motion.div variants={fadeUp}>
           <Tabs
@@ -140,6 +178,7 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
             onValueChange={(value) => {
               setRol(value as Rol);
               setError(null);
+              setErrores({});
             }}
             tabs={[
               { value: "consultor", label: "Consultor", content: fields },

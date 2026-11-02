@@ -200,6 +200,10 @@ validación real de credenciales la hace el backend.
 - `src/components/auth/login-form.tsx`: pestañas **Consultor** (usuario y contraseña)
   y **Candidato** (tipo y número de documento, y clave del cuestionario). Ambos grupos
   de campos ocupan la misma celda para que la altura no cambie entre pestañas.
+- `src/components/auth/login-validation.ts`: validación antes de llamar a la API, con
+  los límites del esquema: usuario de hasta 30 caracteres; DNI, LE y LC de 7 u 8 números
+  (se aceptan puntos y espacios); pasaporte alfanumérico de hasta 20; clave de exactamente
+  8 letras o números. Probada en `frontend/tests/login-validation.test.mjs` (`npm test`).
 - `src/components/auth/session-provider.tsx`: estado de la sesión (`useSession`).
   Entrar como invitado equivale, por ahora, a estar autenticado.
 - `src/components/auth/fade-up.ts`: variantes de `motion` para la entrada escalonada
