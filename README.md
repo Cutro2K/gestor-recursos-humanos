@@ -148,7 +148,8 @@ cd api
 El inicio presenta los accesos al proceso de evaluación y los catálogos. La barra
 lateral permite navegar a candidatos, puestos, competencias, factores, preguntas,
 opciones de respuesta, evaluaciones, cuestionarios y orden de mérito. En pantallas
-pequeñas se despliega con el botón de navegación. Cada sección tiene una ruta
+pequeñas se despliega con el botón de navegación; en escritorio, el botón **<** de la
+barra la contrae para mostrar solo los iconos. Cada sección tiene una ruta
 propia y una página base; las operaciones de negocio corresponden a los siguientes
 PBIs y todavía no están implementadas. La navegación no aplica permisos por rol;
 el acceso requiere iniciar sesión (ver **Inicio de sesión (CU-01)**).
