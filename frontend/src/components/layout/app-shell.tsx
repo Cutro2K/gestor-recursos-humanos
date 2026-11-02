@@ -26,6 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const section = getSection(pathname.split("/")[1]);
   const title =
     pathname === "/"
@@ -78,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <Stack direction="row" align="center" gap="sm" className="ml-auto">
             <ThemeSwitcher />
-            <UserProfile name="Usuario" />
+            <UserProfile />
           </Stack>
         </div>
       </header>
@@ -89,7 +90,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Sidebar
           items={navigation}
           activeId={pathname === "/" ? "inicio" : section?.id}
-          style={{ width: "100%", height: "100%" }}
+          collapsed={collapsed}
+          onCollapsedChange={setCollapsed}
+          style={{ height: "100%" }}
           aria-label="Secciones principales"
           header={
             <Link href="/" onClick={() => setMenuOpen(false)}>
