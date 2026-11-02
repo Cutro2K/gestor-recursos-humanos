@@ -123,6 +123,12 @@ cd api
    npm install
    ```
 
+   Además de Next.js, React y Tailwind CSS, el frontend usa `react-ui-lib`
+   (componentes de interfaz, instalada desde `react-ui-lib-0.1.0.tgz`) y
+   [`motion`](https://motion.dev) (animaciones; es la continuación de framer-motion
+   y se importa desde `motion/react`). `react-ui-lib` también depende de `motion`:
+   mantené ambas en la misma versión para que npm instale una sola copia.
+
 3. *(Opcional)* Si el backend no corre en la URL por defecto (`http://localhost:8080/api`), puede crear un archivo `.env.local` dentro de `frontend/` definiendo:
 
    ```env
@@ -144,15 +150,19 @@ lateral permite navegar a candidatos, puestos, competencias, factores, preguntas
 opciones de respuesta, evaluaciones, cuestionarios y orden de mérito. En pantallas
 pequeñas se despliega con el botón de navegación. Cada sección tiene una ruta
 propia y una página base; las operaciones de negocio corresponden a los siguientes
-PBIs y todavía no están implementadas. La navegación no aplica permisos por rol:
-la autenticación corresponde al PBI-04.
+PBIs y todavía no están implementadas. La navegación no aplica permisos por rol;
+el acceso requiere iniciar sesión (ver **Inicio de sesión (CU-01)**).
 
 - `src/components/layout/`: estructura compartida y páginas base de sección.
 - `src/components/layout/app-shell.module.css`: posición de la navegación y
   distribución de las áreas en escritorio y móvil; no redefine controles.
 - `src/components/ui/`: encabezados, enlaces de sección, iconos y mensajes de feedback.
 - `src/config/sections.ts`: nombres, rutas, descripciones y relaciones entre secciones.
-- `src/app/loading.tsx`, `error.tsx` y `not-found.tsx`: estados comunes de navegación.
+- `src/app/(sistema)/`: rutas del sistema. El grupo `(sistema)` no forma parte de la
+  URL; su `layout.tsx` monta `AppShell` (navegación, encabezado y pie).
+- `src/app/(sistema)/loading.tsx` y `error.tsx`, y `src/app/not-found.tsx`: estados
+  comunes de navegación. `not-found` queda en la raíz para atrapar cualquier URL y
+  también usa `AppShell`.
 - `src/service/api.ts`: cliente HTTP con `fetch`, URL configurable mediante
   `NEXT_PUBLIC_API_URL` y valor por defecto `http://localhost:8080/api`.
 
@@ -175,6 +185,29 @@ y `npm run build` validan el frontend. Para probar la API real, Spring Boot debe
 estar iniciado y permitir CORS desde el origen del frontend (configuración prevista
 en PBI-02).
 
+### Inicio de sesión (CU-01)
+
+`/login` es la pantalla inicial. `src/proxy.ts` (el Middleware de Next.js 16) corre
+en el servidor antes de cada página: sin sesión redirige cualquier ruta a `/login`,
+y con sesión redirige `/login` al inicio. La sesión se guarda en la cookie
+`gestor-rrhh-sesion` para que el proxy pueda leerla; es un control optimista, la
+validación real de credenciales la hace el backend.
+
+- `src/components/auth/login-screen.tsx`: pantalla en dos columnas. A la izquierda,
+  el formulario y el enlace **Entrar como invitado**; a la derecha (solo en pantallas
+  anchas), un panel con el color de acento y una vista previa del sistema.
+- `src/components/auth/login-form.tsx`: pestañas **Consultor** (usuario y contraseña)
+  y **Candidato** (tipo y número de documento, y clave del cuestionario). Ambos grupos
+  de campos ocupan la misma celda para que la altura no cambie entre pestañas.
+- `src/components/auth/session-provider.tsx`: estado de la sesión (`useSession`).
+  Entrar como invitado equivale, por ahora, a estar autenticado.
+- `src/components/auth/fade-up.ts`: variantes de `motion` para la entrada escalonada
+  (fade hacia arriba) de cada bloque. Con "reducir movimiento" activado en el sistema
+  operativo, la pantalla aparece sin animación.
+- `public/login/vista-previa-claro.webp` y `vista-previa-oscuro.webp`: capturas del
+  inicio usadas en la vista previa; se muestra la del tema activo. Si cambia el
+  diseño del inicio, conviene volver a capturarlas.
+
 ### Componentes de interfaz (ReactUILib)
 
 El frontend instala `react-ui-lib` desde `frontend/react-ui-lib-0.1.0.tgz`;
@@ -191,8 +224,8 @@ la preferencia del sistema si no hay una elección guardada. La preferencia se g
 Si el almacenamiento está bloqueado, el cambio funciona durante la sesión de la
 pestaña. El botón también está disponible en el encabezado móvil. Los componentes y
 sus portales comparten el tema mediante `src/components/theme/theme-provider.tsx`.
-El layout permanece como componente de servidor y monta
-`AppShell`, que conserva la navegación compartida.
+El layout raíz permanece como componente de servidor y solo monta los providers;
+`AppShell` lo monta `src/app/(sistema)/layout.tsx`, así `/login` queda sin navegación.
 
 Los controles conservan la apariencia predeterminada de ReactUILib: `Sidebar`
 para navegación, `Button` para el cambio de tema, `Surface` para tarjetas y paneles,
@@ -204,7 +237,7 @@ Los iconos SVG de entrada y salida del menú de cuenta también están diseñado
 [Figma](https://www.figma.com/design/yuMkPEz9GT1FyiyOu2vrka?node-id=7-26) y se
 renderizan con `currentColor` en `src/components/ui/icon.tsx`. La opción
 **Cerrar sesión** usa la variante `destructive` de la biblioteca, con texto e
-icono blancos. Las acciones de sesión muestran avisos hasta conectar la autenticación.
+icono blancos y pide confirmación en una ventana modal antes de cerrar la sesión.
 Los mensajes en línea se componen con `Surface` y `Stack`, ya que la
 biblioteca no ofrece un componente de alerta en línea. Los enlaces usan Next.js
 `Link`; las grillas y la tipografía usan utilidades de Tailwind y los tokens
@@ -232,7 +265,8 @@ A continuación se listan los Casos de Uso implementados y sus respectivos endpo
 
 | Caso de Uso | Método HTTP | Endpoint | Descripción |
 | :--- | :---: | :--- | :--- |
-| **CU 01:** Autenticar usuario | `POST` | `/api/auth/login` | Valida credenciales de usuario del sistema. |
+| **CU 01:** Autenticar consultor | `POST` | `/api/auth/consultor` | Valida usuario y contraseña de un consultor. |
+| **CU 01:** Autenticar candidato | `POST` | `/api/auth/candidato` | Valida tipo y número de documento y la clave del cuestionario. |
 | **CU 06:** Previsualizar candidatos | `POST` | `/api/candidatos/previsualizar` | Recibe el CSV multipart y clasifica las filas sin guardar cambios. |
 | **CU 06:** Importar candidatos | `POST` | `/api/candidatos/importar` | Confirma el CSV multipart, importa filas válidas e informa rechazos. |
 | **CU 25:** Listar candidatos | `GET` | `/api/candidatos` | Lista candidatos activos con filtros y paginación por cursor. |

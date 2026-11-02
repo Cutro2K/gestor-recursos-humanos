@@ -1,23 +1,40 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { Avatar, Button, DropdownButton, Modal, Stack, useToast } from "react-ui-lib";
+import { Avatar, Button, DropdownButton, Modal, Stack } from "react-ui-lib";
+import { useSession } from "@/components/auth/session-provider";
 import { Icon } from "@/components/ui/icon";
 
-type UserProfileProps = { name: string };
+export function UserProfile() {
+  const { session } = useSession();
+  // proxy.ts garantiza la sesión dentro del sistema; null solo mientras hidrata.
+  return session ? <SignedInMenu name={session.nombre} rol={session.rol} /> : null;
+}
 
-export function UserProfile({ name }: UserProfileProps) {
+function SignedInMenu({ name, rol }: { name: string; rol: string }) {
+  const router = useRouter();
+  const { signOut } = useSession();
   const [accountOpen, setAccountOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const { toast } = useToast();
 
   return (
     <div className="relative flex size-9 shrink-0">
       <DropdownButton
         hideArrow
+        keepSource
         direction="column"
         position="bottom_left"
-        triggerLabel={null}
+        triggerLabel={
+          <Avatar
+            aria-hidden="true"
+            name={name}
+            alt=""
+            size="sm"
+            className="size-9 text-xs [--ui-border:color-mix(in_srgb,var(--ui-surface)_75%,white)]"
+          />
+        }
         triggerProps={{
           ref: triggerRef,
           variant: "secondary",
@@ -28,18 +45,14 @@ export function UserProfile({ name }: UserProfileProps) {
         }}
         buttons={[
           {
-            key: "login",
-            children: "Iniciar sesión",
-            leadingIcon: <Icon name="login" strokeWidth={1.5} />,
-            onClick: () =>
-              toast({
-                title: "Inicio de sesión no disponible",
-                description: "La autenticación todavía no está conectada.",
-              }),
-          },
-          {
             key: "account",
             children: "Mi cuenta",
+            leadingIcon: (
+              <span
+                aria-hidden="true"
+                className="inline-block size-5 shrink-0 bg-current mask-[url(/icons/user.png)] mask-contain mask-center mask-no-repeat"
+              />
+            ),
             onClick: () => setAccountOpen(true),
           },
           {
@@ -47,22 +60,10 @@ export function UserProfile({ name }: UserProfileProps) {
             children: "Cerrar sesión",
             variant: "destructive",
             leadingIcon: <Icon name="logout" strokeWidth={1.5} />,
-            onClick: () =>
-              toast({
-                title: "No hay una sesión activa",
-                description: "El inicio de sesión todavía no está conectado.",
-              }),
+            onClick: () => setLogoutOpen(true),
           },
         ]}
       />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
-        <Avatar
-          name={name}
-          alt=""
-          size="sm"
-          className="size-9 text-xs [--ui-border:color-mix(in_srgb,var(--ui-surface)_75%,white)]"
-        />
-      </div>
       <Modal
         open={accountOpen}
         onOpenChange={setAccountOpen}
@@ -73,10 +74,35 @@ export function UserProfile({ name }: UserProfileProps) {
       >
         <Stack gap="sm">
           <p className="font-medium">{name}</p>
-          <p className="text-sm text-[var(--ui-muted)]">
-            Los datos de tu cuenta estarán disponibles cuando se conecte el inicio de sesión.
-          </p>
+          <p className="text-sm text-[var(--ui-muted)]">Rol: {rol.toLowerCase()}</p>
         </Stack>
+      </Modal>
+      <Modal
+        open={logoutOpen}
+        onOpenChange={setLogoutOpen}
+        originRef={triggerRef}
+        title="¿Cerrar sesión?"
+        description="Vas a volver a la pantalla de inicio de sesión."
+        size="sm"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setLogoutOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              leadingIcon={<Icon name="logout" strokeWidth={1.5} />}
+              onClick={() => {
+                signOut();
+                router.replace("/login");
+              }}
+            >
+              Cerrar sesión
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--ui-muted)]">Sesión actual: {name}</p>
       </Modal>
     </div>
   );

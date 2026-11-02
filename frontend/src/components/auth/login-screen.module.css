@@ -1,0 +1,78 @@
+/* Dos columnas en pantallas anchas: formulario a la izquierda y presentación a la derecha. */
+.page {
+  display: grid;
+  min-height: 100dvh;
+  padding: 12px;
+}
+
+.formColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 28px 28px 20px;
+}
+
+.brandTile {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ui-accent) 18%, transparent);
+}
+
+.showcase {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .page {
+    grid-template-columns: minmax(420px, 1fr) 1.15fr;
+  }
+
+  .showcase {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    padding: 56px 56px 0;
+    border-radius: 24px;
+    color: white;
+    background: linear-gradient(
+      150deg,
+      var(--ui-accent),
+      color-mix(in srgb, var(--ui-accent) 65%, #0b1530)
+    );
+  }
+}
+
+/* Vista previa inclinada que se sale del panel, como una pantalla apoyada en perspectiva. */
+.preview {
+  position: absolute;
+  top: 46%;
+  left: 10%;
+  width: 150%;
+}
+
+/* En un elemento interno: motion anima el transform de .preview para el fade. */
+.tilt {
+  transform: perspective(2400px) rotateX(35deg) rotateZ(-18deg);
+  transform-origin: top left;
+}
+
+.tilt img {
+  width: 100%;
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgb(8 15 40 / 35%);
+}
+
+.dark,
+:global([data-ui-theme="dark"]) .light {
+  display: none;
+}
+
+:global([data-ui-theme="dark"]) .dark {
+  display: block;
+}

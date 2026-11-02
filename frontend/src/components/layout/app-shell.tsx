@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <Stack direction="row" align="center" gap="sm" className="ml-auto">
             <ThemeSwitcher />
-            <UserProfile name="Usuario" />
+            <UserProfile />
           </Stack>
         </div>
       </header>

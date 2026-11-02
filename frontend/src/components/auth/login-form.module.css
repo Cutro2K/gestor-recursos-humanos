@@ -1,0 +1,25 @@
+/* Select nativo dentro de las clases de campo de ReactUILib (ui-text-field-outline). */
+.outline:focus-within {
+  border-color: var(--ui-field-accent);
+  color: var(--ui-field-accent);
+}
+
+/* Sin apariencia nativa: Safari ignora la altura de un select nativo. */
+.select {
+  width: 100%;
+  min-height: 44px;
+  padding-right: 20px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text);
+  font-size: 1rem;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.chevron {
+  margin-left: -16px;
+  transform: rotate(90deg);
+  pointer-events: none;
+}
