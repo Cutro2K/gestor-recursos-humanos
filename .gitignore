@@ -8,6 +8,9 @@ api/target/
 api/build/
 api/.gradle/
 
+# Logs del backend
+api/logs/
+
 # IDEs y SO
 .idea/
 *.iml
