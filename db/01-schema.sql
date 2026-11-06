@@ -10,11 +10,12 @@
 -- TABLA: CONSULTOR
 -- Usuarios internos de RRHH habilitados para autenticarse (CU 01), administrar
 -- los catálogos de perfiles/preguntas y gestionar evaluaciones de candidatos.
+-- La contraseña NO se guarda acá: la validará el directorio LDAP. username será
+-- el uid del consultor en LDAP y vinculará ambas fuentes.
 -- =============================================================================
 CREATE TABLE consultor (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(30) NOT NULL,
-    password VARCHAR(255) NOT NULL,
     nombre VARCHAR(50) NOT NULL,
     apellido VARCHAR(50) NOT NULL,
     email VARCHAR(255) NOT NULL,

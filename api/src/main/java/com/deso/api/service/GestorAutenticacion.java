@@ -2,6 +2,7 @@ package com.deso.api.service;
 
 import com.deso.api.dao.ConsultorDAO;
 import com.deso.api.dao.CuestionarioDAO;
+import com.deso.api.dao.DirectorioConsultores;
 import com.deso.api.dto.LoginCandidatoDTO;
 import com.deso.api.dto.LoginConsultorDTO;
 import com.deso.api.dto.SesionDTO;
@@ -22,34 +23,41 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GestorAutenticacion {
 
+    /** Mismo mensaje para todos los rechazos: no revela si el usuario existe o está inactivo. */
+    private static final String CREDENCIALES_INVALIDAS = "El usuario o la contraseña no son válidos";
+
     private final ConsultorDAO consultorDAO;
     private final CuestionarioDAO cuestionarioDAO;
+    private final DirectorioConsultores directorioConsultores;
 
     public GestorAutenticacion(ConsultorDAO consultorDAO,
-                               CuestionarioDAO cuestionarioDAO) {
+                               CuestionarioDAO cuestionarioDAO,
+                               DirectorioConsultores directorioConsultores) {
         this.consultorDAO = consultorDAO;
         this.cuestionarioDAO = cuestionarioDAO;
+        this.directorioConsultores = directorioConsultores;
     }
 
     /**
-     * Autentica a un consultor validando su nombre de usuario y contraseña.
-     * Corresponde a CU 01 (Flujo Consultor).
+     * Autentica a un consultor (CU 01, flujo Consultor).
+     * Primero verifica en la base que exista y esté activo, y recién entonces valida la
+     * contraseña contra el directorio LDAP, para no consultarlo por usuarios ya rechazados.
      */
     public SesionDTO autenticarConsultor(LoginConsultorDTO consultorDTO) {
         if (consultorDTO == null || consultorDTO.getUsuario() == null || consultorDTO.getContrasena() == null) {
-            throw new CredencialesInvalidasException("El usuario o la contraseña no son válidos");
+            throw new CredencialesInvalidasException(CREDENCIALES_INVALIDAS);
         }
 
         Consultor consultor = consultorDAO.buscarPorUsername(consultorDTO.getUsuario().strip())
-                .orElseThrow(() -> new CredencialesInvalidasException("El usuario o la contraseña no son válidos"));
+                .orElseThrow(() -> new CredencialesInvalidasException(CREDENCIALES_INVALIDAS));
 
-        if (consultor.getActivo() == null || !consultor.getActivo()) {
-            throw new CredencialesInvalidasException("El consultor se encuentra inactivo");
+        if (!Boolean.TRUE.equals(consultor.getActivo())) {
+            throw new CredencialesInvalidasException(CREDENCIALES_INVALIDAS);
         }
 
-        // Pendiente de refactor con hash BCrypt / Spring Security
-        if (!consultor.getPassword().equals(consultorDTO.getContrasena())) {
-            throw new CredencialesInvalidasException("El usuario o la contraseña no son válidos");
+        // username de la base = uid en LDAP: así se vinculan las dos fuentes.
+        if (!directorioConsultores.credencialesValidas(consultor.getUsername(), consultorDTO.getContrasena())) {
+            throw new CredencialesInvalidasException(CREDENCIALES_INVALIDAS);
         }
 
         return new SesionDTO(consultor.getId(), "CONSULTOR");
