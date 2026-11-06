@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,41 @@ public class CuestionarioPostgreSQLDAO implements CuestionarioDAO {
                 """, Cuestionario.class)
                 .setParameter("evaluacionIds", evaluacionIds)
                 .getResultList();
+    }
+
+    @Override
+    @Transactional
+    public boolean registrarAcceso(Long cuestionarioId, LocalDateTime ingreso) {
+        int filas = entityManager.createQuery("""
+                UPDATE Cuestionario c
+                SET c.cantidadAccesos = c.cantidadAccesos + 1, c.ultimoIngreso = :ingreso
+                WHERE c.id = :id
+                  AND c.cantidadAccesos < c.cantidadMaximaAccesos
+                  AND c.estado IN (:activo, :enProceso)
+                """)
+                .setParameter("ingreso", ingreso)
+                .setParameter("id", cuestionarioId)
+                .setParameter("activo", EstadoCuestionario.ACTIVO)
+                .setParameter("enProceso", EstadoCuestionario.EN_PROCESO)
+                .executeUpdate();
+        return filas == 1;
+    }
+
+    @Override
+    @Transactional
+    public void marcarIncompleto(Long cuestionarioId, LocalDateTime fechaCambio) {
+        entityManager.createQuery("""
+                UPDATE Cuestionario c
+                SET c.estado = :incompleto, c.fechaCambioEstado = :fechaCambio
+                WHERE c.id = :id
+                  AND c.estado IN (:activo, :enProceso)
+                """)
+                .setParameter("incompleto", EstadoCuestionario.INCOMPLETO)
+                .setParameter("fechaCambio", fechaCambio)
+                .setParameter("id", cuestionarioId)
+                .setParameter("activo", EstadoCuestionario.ACTIVO)
+                .setParameter("enProceso", EstadoCuestionario.EN_PROCESO)
+                .executeUpdate();
     }
 
     @Override

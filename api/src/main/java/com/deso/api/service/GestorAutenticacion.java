@@ -15,6 +15,9 @@ import com.deso.api.model.enums.EstadoCuestionario;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Locale;
+
 /**
  * Gestor responsable de los flujos de autenticación de usuarios (CU 01).
  * Soporta la autenticación tanto de Consultores como de Candidatos.
@@ -25,6 +28,14 @@ public class GestorAutenticacion {
 
     /** Mismo mensaje para todos los rechazos: no revela si el usuario existe o está inactivo. */
     private static final String CREDENCIALES_INVALIDAS = "El usuario o la contraseña no son válidos";
+
+    /** Mensaje único que exige el CU 01 (3.A.2.2) para cualquier dato inválido del candidato. */
+    private static final String DATOS_CANDIDATO_INVALIDOS =
+            "Los datos ingresados no son válidos o no existe un cuestionario para el Candidato";
+
+    /** Solo lo ve quien ya acertó documento y clave, así que no le revela nada a un extraño. */
+    private static final String ACCESOS_SUPERADOS =
+            "Superó la cantidad máxima de accesos permitidos: el cuestionario quedó incompleto";
 
     private final ConsultorDAO consultorDAO;
     private final CuestionarioDAO cuestionarioDAO;
@@ -48,7 +59,8 @@ public class GestorAutenticacion {
             throw new CredencialesInvalidasException(CREDENCIALES_INVALIDAS);
         }
 
-        Consultor consultor = consultorDAO.buscarPorUsername(consultorDTO.getUsuario().strip())
+        // CU 01: el identificador de usuario es siempre en mayúsculas.
+        Consultor consultor = consultorDAO.buscarPorUsername(consultorDTO.getUsuario().strip().toUpperCase(Locale.ROOT))
                 .orElseThrow(() -> new CredencialesInvalidasException(CREDENCIALES_INVALIDAS));
 
         if (!Boolean.TRUE.equals(consultor.getActivo())) {
@@ -63,42 +75,39 @@ public class GestorAutenticacion {
         return new SesionDTO(consultor.getId(), "CONSULTOR");
     }
 
+    /**
+     * Autentica a un candidato (CU 01, flujo Candidato).
+     * Registra el acceso recién cuando pasaron todas las validaciones, así un error de tipeo no
+     * consume accesos. Si ya no quedan, el cuestionario pasa a INCOMPLETO (CU 26): noRollbackFor
+     * hace que ese cambio se guarde aunque el login termine rechazado con una excepción.
+     */
+    @Transactional(noRollbackFor = CredencialesInvalidasException.class)
     public SesionDTO autenticarCandidato(LoginCandidatoDTO loginCandidatoDTO) {
-        if (loginCandidatoDTO == null || loginCandidatoDTO.getTipoDocumento() == null 
+        if (loginCandidatoDTO == null || loginCandidatoDTO.getTipoDocumento() == null
                 || loginCandidatoDTO.getNroDocumento() == null || loginCandidatoDTO.getClave() == null) {
-            throw new CredencialesInvalidasException("Los datos ingresados no son válidos o no existe un cuestionario para el Candidato");
+            throw new CredencialesInvalidasException(DATOS_CANDIDATO_INVALIDOS);
         }
 
-        String clave = loginCandidatoDTO.getClave().strip();
+        Cuestionario cuestionario = cuestionarioDAO.buscarPorClave(loginCandidatoDTO.getClave().strip())
+                .orElseThrow(() -> new CredencialesInvalidasException(DATOS_CANDIDATO_INVALIDOS));
 
-        // 1. Buscamos el cuestionario por su clave única indexada
-        Cuestionario cuestionario = cuestionarioDAO.buscarPorClave(clave)
-                .orElseThrow(() -> new CredencialesInvalidasException("No existe el cuestionario con la clave ingresada"));
-
-        // 2. Verificamos que el cuestionario esté disponible para responder
-        boolean estadoValido = cuestionario.getEstado() == EstadoCuestionario.ACTIVO 
+        boolean estadoValido = cuestionario.getEstado() == EstadoCuestionario.ACTIVO
                 || cuestionario.getEstado() == EstadoCuestionario.EN_PROCESO;
-        if (!estadoValido) {
-            throw new CredencialesInvalidasException("El cuestionario ya cerro o no se encuentra activo");
-        }
-
-        // 3 Validamos que el candidato asignado al cuestionario coincida con los datos ingresados
         Candidato candidato = cuestionario.getCandidato();
-        if (candidato == null || Boolean.TRUE.equals(candidato.getEliminado())) {
-            throw new CredencialesInvalidasException("Los datos ingresados no son válidos o no existe un cuestionario para el Candidato");
+        if (!estadoValido || candidato == null || Boolean.TRUE.equals(candidato.getEliminado())) {
+            throw new CredencialesInvalidasException(DATOS_CANDIDATO_INVALIDOS);
         }
 
         boolean coincideTipoDoc = candidato.getTipoDocumento() == loginCandidatoDTO.getTipoDocumento();
         boolean coincideNroDoc = candidato.getNroDocumento().equalsIgnoreCase(loginCandidatoDTO.getNroDocumento().strip());
-
         if (!coincideTipoDoc || !coincideNroDoc) {
-            throw new CredencialesInvalidasException("Los datos ingresados son invalidos");
+            throw new CredencialesInvalidasException(DATOS_CANDIDATO_INVALIDOS);
         }
 
-        // 4. Verificamos que no haya superado el límite de accesos permitidos
-        if (cuestionario.getCantidadAccesos() != null && cuestionario.getCantidadMaximaAccesos() != null
-                && cuestionario.getCantidadAccesos() >= cuestionario.getCantidadMaximaAccesos()) {
-            throw new CredencialesInvalidasException("El cuestionario ha superado la cantidad máxima de accesos permitidos");
+        LocalDateTime ahora = LocalDateTime.now();
+        if (!cuestionarioDAO.registrarAcceso(cuestionario.getId(), ahora)) {
+            cuestionarioDAO.marcarIncompleto(cuestionario.getId(), ahora);
+            throw new CredencialesInvalidasException(ACCESOS_SUPERADOS);
         }
 
         return new SesionDTO(candidato.getId(), "CANDIDATO");
