@@ -1,6 +1,6 @@
 # Plan de implementación: CU-01 con LDAP y JWT rotables
 
-> Estado: **diseño acordado, implementación parcial** (actualizado el 2026-11-06).
+> Estado: **diseño acordado, implementación parcial** (actualizado el 2026-11-08).
 > Rama de trabajo: `feature/cu01-autenticar-usuario`.
 > Diagrama: `diagramas/06 - Diagramas de Secuencia/cu01-autenticacion.html`.
 
@@ -15,7 +15,8 @@ lugar de la tabla `token_refresco` con familias, y sesión también para candida
 | Consultores validados contra OpenLDAP | Implementado |
 | Límites del CU 01 para consultores (usuario 15, contraseña 20, mayúsculas) | Implementado |
 | Candidato: mensaje único, acceso atómico, `INCOMPLETO` al superar accesos | Implementado |
-| Sesión, tokens, cookies y Spring Security | Pendiente |
+| Tabla `sesion`, claves RSA, tokens, cookies y endpoints (pasos 1 y 2) | Implementado |
+| Spring Security: reglas por rol, CORS y CSRF (paso 3) | Pendiente |
 | `proxy.ts` y frontend con cookies de la API | Pendiente |
 
 ## 2. Requisitos del enunciado
