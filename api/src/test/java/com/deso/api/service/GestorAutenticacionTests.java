@@ -3,6 +3,7 @@ package com.deso.api.service;
 import com.deso.api.dao.ConsultorDAO;
 import com.deso.api.dao.CuestionarioDAO;
 import com.deso.api.dao.DirectorioConsultores;
+import com.deso.api.dao.SesionDAO;
 import com.deso.api.dto.LoginCandidatoDTO;
 import com.deso.api.dto.LoginConsultorDTO;
 import com.deso.api.dto.SesionDTO;
@@ -12,6 +13,9 @@ import com.deso.api.model.entity.Consultor;
 import com.deso.api.model.entity.Cuestionario;
 import com.deso.api.model.enums.EstadoCuestionario;
 import com.deso.api.model.enums.TipoDocumento;
+import com.deso.api.model.entity.Sesion;
+import com.deso.api.security.EmisorTokens;
+import com.deso.api.security.PropiedadesAuth;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,12 +23,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -40,6 +47,7 @@ class GestorAutenticacionTests {
 	private ConsultorDAO consultorDAO;
 	private CuestionarioDAO cuestionarioDAO;
 	private DirectorioConsultores directorio;
+	private SesionDAO sesionDAO;
 	private GestorAutenticacion gestor;
 
 	@BeforeEach
@@ -47,7 +55,22 @@ class GestorAutenticacionTests {
 		consultorDAO = mock(ConsultorDAO.class);
 		cuestionarioDAO = mock(CuestionarioDAO.class);
 		directorio = mock(DirectorioConsultores.class);
-		gestor = new GestorAutenticacion(consultorDAO, cuestionarioDAO, directorio);
+		sesionDAO = mock(SesionDAO.class);
+		EmisorTokens emisor = mock(EmisorTokens.class);
+		PropiedadesAuth propiedades = new PropiedadesAuth(
+				new PropiedadesAuth.Jwt("sin-uso.pem", "deso-api", Duration.ofMinutes(10)),
+				new PropiedadesAuth.Sesion(Duration.ofHours(8), Duration.ofHours(2)),
+				new PropiedadesAuth.Cookies(false));
+
+		when(sesionDAO.crear(any(Sesion.class))).thenAnswer(invocacion -> {
+			Sesion sesion = invocacion.getArgument(0);
+			sesion.setId(99L);
+			return sesion;
+		});
+		when(emisor.emitirAccess(anyString(), anyString(), any())).thenReturn("access");
+		when(emisor.emitirRefresh(anyLong(), anyLong(), anyString(), anyString(), any())).thenReturn("refresh");
+
+		gestor = new GestorAutenticacion(consultorDAO, cuestionarioDAO, directorio, sesionDAO, emisor, propiedades);
 	}
 
 	@Test
@@ -55,11 +78,13 @@ class GestorAutenticacionTests {
 		when(cuestionarioDAO.buscarPorClave(CLAVE)).thenReturn(Optional.of(cuestionario(EstadoCuestionario.ACTIVO)));
 		when(cuestionarioDAO.registrarAcceso(eq(10L), any(LocalDateTime.class))).thenReturn(true);
 
-		SesionDTO sesion = gestor.autenticarCandidato(login("40123456"));
+		SesionDTO sesion = gestor.autenticarCandidato(login("40123456")).sesion();
 
-		assertThat(sesion.getSujetoId()).isEqualTo(7L);
+		// La sesión del candidato se identifica por su cuestionario.
+		assertThat(sesion.getSujetoId()).isEqualTo(10L);
 		assertThat(sesion.getRol()).isEqualTo("CANDIDATO");
 		verify(cuestionarioDAO, never()).marcarIncompleto(any(), any());
+		verify(sesionDAO).borrarPorCuestionario(10L);
 	}
 
 	@Test
@@ -115,7 +140,7 @@ class GestorAutenticacionTests {
 		when(consultorDAO.buscarPorUsername("ADMIN")).thenReturn(Optional.of(consultor));
 		when(directorio.credencialesValidas("ADMIN", "admin123")).thenReturn(true);
 
-		SesionDTO sesion = gestor.autenticarConsultor(new LoginConsultorDTO(" admin ", "admin123"));
+		SesionDTO sesion = gestor.autenticarConsultor(new LoginConsultorDTO(" admin ", "admin123")).sesion();
 
 		assertThat(sesion.getRol()).isEqualTo("CONSULTOR");
 	}

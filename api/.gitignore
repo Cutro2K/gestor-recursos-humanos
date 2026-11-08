@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Claves JWT locales (CU 01) ###
+keys/
