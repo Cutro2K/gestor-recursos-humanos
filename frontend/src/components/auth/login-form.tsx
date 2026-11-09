@@ -11,6 +11,7 @@ import { ApiError } from "@/service/api";
 import { fadeUp, stagger } from "./fade-up";
 import {
   LIMITES,
+  normalizarUsuario,
   normalizarDocumento,
   sinErrores,
   validarCandidato,
@@ -63,9 +64,9 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     try {
       const sesion =
         rol === "consultor"
-          ? await loginConsultor(usuario.trim(), contrasena)
+          ? await loginConsultor(normalizarUsuario(usuario), contrasena)
           : await loginCandidato(tipoDocumento, documento, clave);
-      const nombre = rol === "consultor" ? usuario.trim() : `${tipoDocumento} ${documento}`;
+      const nombre = rol === "consultor" ? normalizarUsuario(usuario) : `${tipoDocumento} ${documento}`;
       signIn({ ...sesion, nombre });
       toast({ title: "Sesión iniciada", description: `Bienvenido, ${nombre}.` });
       onSuccess();
@@ -85,6 +86,9 @@ export function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         maxLength={LIMITES.usuario}
         error={errores.usuario}
         value={usuario}
+        // Se muestra en mayúsculas por CSS y se convierte al enviar: así no se reescribe el
+        // valor mientras se escribe y el cursor no salta al editar en el medio.
+        className={styles.mayusculas}
         onChange={campo("usuario", setUsuario)}
       />
       <TextField

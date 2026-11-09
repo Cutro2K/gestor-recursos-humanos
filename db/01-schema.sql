@@ -10,11 +10,12 @@
 -- TABLA: CONSULTOR
 -- Usuarios internos de RRHH habilitados para autenticarse (CU 01), administrar
 -- los catálogos de perfiles/preguntas y gestionar evaluaciones de candidatos.
+-- La contraseña NO se guarda acá: la validará el directorio LDAP. username será
+-- el uid del consultor en LDAP y vinculará ambas fuentes.
 -- =============================================================================
 CREATE TABLE consultor (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(30) NOT NULL,
-    password VARCHAR(255) NOT NULL,
     nombre VARCHAR(50) NOT NULL,
     apellido VARCHAR(50) NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -501,3 +502,27 @@ CREATE TABLE registro_ejecucion_proceso (
     detalle TEXT,
     CONSTRAINT chk_proceso_accion CHECK (accion IN ('INICIO', 'FINALIZACION'))
 );
+
+-- =============================================================================
+-- TABLA: SESION
+-- Sesión abierta por un login (CU 01). Una fila por sesión: el refresh token lleva su
+-- id y su seq, y cada refresco incrementa seq, así un refresh token ya usado deja de
+-- servir. Cerrar sesión, vencer o detectar un seq viejo borra la fila.
+-- =============================================================================
+CREATE TABLE sesion (
+    id BIGSERIAL PRIMARY KEY,
+    consultor_id BIGINT,
+    cuestionario_id BIGINT,
+    inicio TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expira_en TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    seq BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT fk_sesion_consultor FOREIGN KEY (consultor_id)
+        REFERENCES consultor(id) ON DELETE CASCADE,
+    CONSTRAINT fk_sesion_cuestionario FOREIGN KEY (cuestionario_id)
+        REFERENCES cuestionario(id) ON DELETE CASCADE,
+    -- Una sesión es de un consultor o de un candidato (por su cuestionario), nunca de ambos.
+    CONSTRAINT chk_sesion_titular CHECK (num_nonnulls(consultor_id, cuestionario_id) = 1),
+    CONSTRAINT chk_sesion_vigencia CHECK (expira_en > inicio)
+);
+
+CREATE INDEX idx_sesion_cuestionario ON sesion (cuestionario_id);
