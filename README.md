@@ -22,6 +22,9 @@ gestor-recursos-humanos/
 ├── db/                  # Scripts SQL de creación de esquema y carga de datos (seed)
 │   ├── 01-schema.sql    # Creación de tablas y relaciones
 │   └── 02-data.sql      # Datos de prueba para todos los Casos de Uso
+├── ldap/                # Configuración y usuarios iniciales para OpenLDAP (CU-01)
+├── scripts/             # Scripts utilitarios (ej. generación de claves JWT RSA)
+├── docker-compose.yml   # Orquestación de PostgreSQL y OpenLDAP
 ├── diagramas/           # Diagramas de Clases, Secuencia y Entidad-Relación
 └── git-conventions/     # Guías de flujo de trabajo (Conventional Commits y Branches)
 ```
@@ -34,12 +37,52 @@ Asegúrese de tener instaladas las siguientes herramientas antes de levantar el 
 
 * **Java JDK:** Versión 25 (o superior compatible con la configuración de `api/pom.xml`)
 * **Maven:** Incluido mediante el wrapper `./mvnw` dentro de `/api` (no requiere instalación global)
-* **PostgreSQL:** Versión 14 o superior (corriendo en el puerto `5432`)
+* **Docker y Docker Compose:** *(Recomendado)* Para levantar automáticamente los servicios de base de datos (PostgreSQL 16) y directorio de usuarios (OpenLDAP).
+* **OpenSSL:** Necesario para generar el par de claves RSA/JWT mediante el script provisto (incluido de forma estándar en Linux/macOS y en Git Bash para Windows).
+* **PostgreSQL:** Versión 14 o superior (solo si opta por una instalación manual sin Docker, corriendo en el puerto `5432`).
 * **Node.js:** Versión 22.12 o superior (junto con `npm`); se recomienda Node.js 24 para el frontend y ReactUILib.
 
 ---
 
-## 1. Configuración de la Base de Datos (PostgreSQL)
+## 1. Servicios de Base de Datos y Autenticación (Docker / PostgreSQL / OpenLDAP)
+
+### Opción Recomendada: Levantar con Docker Compose
+
+El repositorio provee una configuración completa en `docker-compose.yml` que levanta los dos servicios requeridos por el backend:
+
+1. **PostgreSQL 16** (puerto `5432`): Base de datos relacional del sistema (`deso_db`). Al crearse el contenedor por primera vez, ejecuta automáticamente los scripts de inicialización `db/01-schema.sql` (tablas y restricciones) y `db/02-data.sql` (datos de prueba para todos los Casos de Uso).
+2. **OpenLDAP** (puerto `389`): Directorio corporativo LDAP necesario para autenticar consultores (CU-01), precargado con los datos de `ldap/`.
+
+Para iniciar ambos servicios en segundo plano, ejecute desde la raíz del proyecto:
+
+```bash
+docker compose up -d
+```
+
+#### Comandos útiles de Docker Compose
+
+* **Ver el estado de los contenedores:**
+  ```bash
+  docker compose ps
+  ```
+* **Ver logs de los servicios:**
+  ```bash
+  docker compose logs -f
+  ```
+* **Detener los servicios (conservando los datos):**
+  ```bash
+  docker compose down
+  ```
+* **Reiniciar y restablecer la base de datos desde cero:**
+  ```bash
+  docker compose down -v
+  docker compose up -d
+  ```
+  *(El flag `-v` elimina el volumen persistente de PostgreSQL, forzando la re-ejecución de los scripts de seed).*
+
+### Opción Alternativa: Instalación Manual de PostgreSQL (Sin Docker)
+
+Si prefiere utilizar una instancia local de PostgreSQL sin Docker:
 
 1. Asegúrese de que el servicio de PostgreSQL esté activo y en ejecución.
 2. Ingrese a la consola de PostgreSQL (`psql`) o a un cliente gráfico (pgAdmin / DBeaver) y cree la base de datos `deso_db`:
@@ -48,7 +91,6 @@ Asegúrese de tener instaladas las siguientes herramientas antes de levantar el 
    CREATE DATABASE deso_db;
    ```
 
-
 3. Ejecute el script de estructura de tablas (`01-schema.sql`) y el script de datos iniciales / *seed* (`02-data.sql`) ubicados en la carpeta `/db`:
 
    ```bash
@@ -56,18 +98,28 @@ Asegúrese de tener instaladas las siguientes herramientas antes de levantar el 
    psql -U postgres -h localhost -d deso_db -f db/02-data.sql
    ```
 
+> **Nota:** Para el Caso de Uso de autenticación (CU-01), el backend requiere conectarse a un servidor LDAP en el puerto 389. Por esta razón se recomienda enfáticamente utilizar la opción de Docker Compose.
+
 ---
 
 ## 2. Configuración y Ejecución del Backend (`/api`)
 
-### Separación de los DAOs
+### Generación obligatoria de Claves JWT (Pre-requisito de arranque)
 
-Cada objeto utiliza una clase abstracta `DAOObjeto` como contrato y una clase
-`DAOPostgreSQLObjeto` que la extiende e implementa el acceso a PostgreSQL mediante JPA.
-Para candidatos, `GestorCandidatos` recibe `DAOCandidato` por constructor y Spring
-inyecta `DAOPostgreSQLCandidato`, que concentra las consultas JPA y las
-transacciones de persistencia. Las reglas de negocio permanecen en el gestor;
-sus pruebas unitarias simulan el contrato abstracto.
+Antes de iniciar el backend por primera vez, **es indispensable generar la clave privada RSA** que utiliza Spring Boot (`ClaveFirma`) para firmar los tokens JWT en la sesión de los consultores (CU-01).
+
+Dado que el directorio `api/keys/` está ignorado en Git por motivos de seguridad, cada desarrollador debe generar su clave localmente ejecutando el script provisto desde la raíz del proyecto:
+
+```bash
+./scripts/generar-claves-jwt.sh
+```
+*(En Windows: ejecutar desde Git Bash o terminal WSL)*.
+
+Este script creará la clave RSA en `api/keys/jwt-private.pem`.
+
+> **Importante:** Si omite este paso, Spring Boot fallará al iniciar con el siguiente error:  
+> `NoSuchFileException: keys/jwt-private.pem`  
+> `UnsatisfiedDependencyException: Error creating bean with name 'claveFirma'`
 
 ### Aviso importante sobre Variables de Entorno
 
