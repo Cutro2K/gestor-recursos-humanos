@@ -18,6 +18,7 @@ export function FactoresPanel() {
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [consulta, setConsulta] = useState({ filtros: FILTROS_VACIOS, revision: 0 });
   const [factores, setFactores] = useState<Factor[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [seleccionadosIds, setSeleccionadosIds] = useState<number[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -158,20 +159,22 @@ export function FactoresPanel() {
       <Surface bordered>
         <form className={styles.filters} onSubmit={buscar} noValidate aria-label="Buscar factores">
           <TextField
-            label="Nombre de competencia"
-            name="Competencia"
-            value={filtros.nombreCompetencia}
-            onChange={(nombreCompetencia) => setFiltros({ ...filtros, nombreCompetencia })}
-            maxLength={75}
-            placeholder="Buscar por nombre de competencia"
-          />
-          <TextField
+            uppercase={true}
             label="Nombre de factor"
             name="Factor"
             value={filtros.nombreFactor}
             onChange={(nombreFactor) => setFiltros({ ...filtros, nombreFactor })}
             maxLength={50}
             placeholder="Buscar por nombre de factor"
+          />
+          <TextField
+            uppercase={true}
+            label="Nombre de competencia"
+            name="Competencia"
+            value={filtros.nombreCompetencia}
+            onChange={(nombreCompetencia) => setFiltros({ ...filtros, nombreCompetencia })}
+            maxLength={75}
+            placeholder="Buscar por nombre de competencia"
           />
           <Button type="submit" disabled={cargando} className="mb-2">
             Buscar

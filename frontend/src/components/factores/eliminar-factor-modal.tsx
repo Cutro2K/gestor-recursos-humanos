@@ -100,7 +100,7 @@ export function EliminarFactorModal({ factores, onEliminado }: EliminarFactorMod
       <Stack gap="sm">
         {unicoFactor ? (
           <Surface bordered padding="sm">
-            <Stack gap="xs">
+            <Stack gap="sm">
               <span className="font-semibold">{unicoFactor.nombre}</span>
               <span className={styles.muted}>
                 Código: <strong>{unicoFactor.codigo}</strong> · Competencia:{" "}

@@ -195,6 +195,7 @@ export function ModificarFactorModal({ factor, onModificado }: ModificarFactorMo
           </div>
 
           <TextField
+            uppercase={true}
             label="Nombre *"
             name="nombre"
             value={formulario.nombre}
@@ -226,6 +227,7 @@ export function ModificarFactorModal({ factor, onModificado }: ModificarFactorMo
           />
 
           <TextField
+            uppercase={true}
             label="Descripción *"
             name="descripcion"
             value={formulario.descripcion}

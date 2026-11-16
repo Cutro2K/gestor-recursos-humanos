@@ -211,6 +211,7 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
             </div>
 
             <TextField
+              uppercase={true}
               label="Código *"
               name="codigo"
               value={formulario.codigo}
@@ -227,6 +228,7 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
             />
 
             <TextField
+              uppercase={true}
               label="Nombre *"
               name="nombre"
               value={formulario.nombre}
@@ -258,6 +260,7 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
             />
 
             <TextField
+              uppercase={true}
               label="Descripción *"
               name="descripcion"
               value={formulario.descripcion}
