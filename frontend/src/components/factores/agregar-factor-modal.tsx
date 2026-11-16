@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, MouseEvent } from "react";
 import { Button, Modal, Stack, Surface, TextField, useToast } from "react-ui-lib";
 import { COMPETENCIAS_MOCK, crearFactor } from "@/service/factores";
 import styles from "./factores.module.css";
@@ -43,7 +43,8 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
     setAbierto(false);
   }
 
-  function cargarOtro() {
+  function cargarOtro(event?: MouseEvent<HTMLButtonElement>) {
+    event?.preventDefault();
     setFormulario(FORM_INICIAL);
     setErrores({});
     setFactorRecienCreado(null);
@@ -138,16 +139,17 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
       actions={
         factorRecienCreado ? (
           <>
-            <Button type="button" variant="secondary" onClick={limpiarYcerrar}>
+            <Button key="no" type="button" variant="secondary" onClick={limpiarYcerrar}>
               No
             </Button>
-            <Button type="button" variant="primary" onClick={cargarOtro}>
+            <Button key="si" type="button" variant="primary" onClick={cargarOtro}>
               Sí
             </Button>
           </>
         ) : (
           <>
             <Button
+              key="cancelar"
               type="button"
               variant="secondary"
               disabled={guardando}
@@ -156,6 +158,7 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
               Cancelar
             </Button>
             <Button
+              key="aceptar"
               type="submit"
               form="form-alta-factor"
               loading={guardando}
