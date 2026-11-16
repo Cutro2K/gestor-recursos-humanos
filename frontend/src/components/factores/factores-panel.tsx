@@ -19,7 +19,6 @@ export function FactoresPanel() {
   const [consulta, setConsulta] = useState({ filtros: FILTROS_VACIOS, revision: 0 });
   const [factores, setFactores] = useState<Factor[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [seleccionadosIds, setSeleccionadosIds] = useState<number[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
@@ -34,17 +33,10 @@ export function FactoresPanel() {
     consulta.filtros.nombreCompetencia.trim() || consulta.filtros.nombreFactor.trim()
   );
 
-  const factoresSeleccionados = factores.filter(
-    (f) => typeof f.id === "number" && seleccionadosIds.includes(f.id)
-  );
-
-  const idsDisponibles = factores
-    .map((f) => f.id)
-    .filter((id): id is number => typeof id === "number");
-
-  const todosSeleccionados =
-    idsDisponibles.length > 0 &&
-    idsDisponibles.every((id) => seleccionadosIds.includes(id));
+  const factorSeleccionado =
+    selectedId !== null
+      ? (factores.find((f) => f.id === selectedId) ?? null)
+      : null;
 
   const recargar = useCallback(() => {
     setCargando(true);
@@ -65,13 +57,13 @@ export function FactoresPanel() {
             .map((f) => f.id)
             .filter((id): id is number => typeof id === "number")
         );
-        setSeleccionadosIds((prev) => prev.filter((id) => idsRecibidos.has(id)));
+        setSelectedId((prev) => (prev !== null && idsRecibidos.has(prev) ? prev : null));
         clearError();
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
         setFactores([]);
-        setSeleccionadosIds([]);
+        setSelectedId(null);
         setCursor(null);
         setError(true);
         reportError(error, {
@@ -93,24 +85,14 @@ export function FactoresPanel() {
 
   function alternarSeleccion(id: number | null | undefined) {
     if (typeof id !== "number") return;
-    setSeleccionadosIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  }
-
-  function alternarSeleccionTodos() {
-    if (todosSeleccionados) {
-      setSeleccionadosIds([]);
-    } else {
-      setSeleccionadosIds(idsDisponibles);
-    }
+    setSelectedId((prev) => (prev === id ? null : id));
   }
 
   function buscar(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setCargando(true);
     setError(false);
-    setSeleccionadosIds([]);
+    setSelectedId(null);
     setConsulta((anterior) => ({ filtros, revision: anterior.revision + 1 }));
   }
 
@@ -118,7 +100,7 @@ export function FactoresPanel() {
     setFiltros(FILTROS_VACIOS);
     setCargando(true);
     setError(false);
-    setSeleccionadosIds([]);
+    setSelectedId(null);
     setConsulta((anterior) => ({ filtros: FILTROS_VACIOS, revision: anterior.revision + 1 }));
   }
 
@@ -196,7 +178,7 @@ export function FactoresPanel() {
           <div>
             <h2 className="font-semibold">Factores</h2>
             <p className={styles.muted}>
-              Seleccioná uno para modificar o eliminar, o varios para eliminar en conjunto.
+              Seleccioná un factor para modificarlo o eliminarlo.
             </p>
           </div>
           <Stack direction="column" align="end" gap="sm" wrap>
@@ -226,18 +208,7 @@ export function FactoresPanel() {
                 <thead>
                   <tr>
                     <th scope="col" className={styles.radioCell}>
-                      <RadioButton
-                        label={<span className="sr-only">Seleccionar todos los factores</span>}
-                        value="todos"
-                        checked={todosSeleccionados}
-                        onCheckedChange={() => {
-                          if (!todosSeleccionados) alternarSeleccionTodos();
-                        }}
-                        onClick={() => {
-                          if (todosSeleccionados) alternarSeleccionTodos();
-                        }}
-                        size="sm"
-                      />
+                      <span className="sr-only">Seleccionar</span>
                     </th>
                     {["Código", "Nombre", "Competencia", "Orden", "Descripción"].map((titulo) => (
                       <th key={titulo} scope="col">
@@ -249,7 +220,7 @@ export function FactoresPanel() {
                 <tbody>
                   {factores.map((factor) => {
                     const estaSeleccionado =
-                      typeof factor.id === "number" && seleccionadosIds.includes(factor.id);
+                      typeof factor.id === "number" && selectedId === factor.id;
 
                     return (
                       <tr
@@ -305,42 +276,35 @@ export function FactoresPanel() {
               </div>
             )}
 
-            {factoresSeleccionados.length > 0 && (
+            {factorSeleccionado && (
               <div
                 className={styles.selectionBar}
                 role="region"
-                aria-label="Acciones sobre factores seleccionados"
+                aria-label="Acciones sobre el factor seleccionado"
               >
                 <Stack direction="row" align="center" gap="sm" wrap>
-                  <span className="text-sm font-medium">
-                    {factoresSeleccionados.length === 1
-                      ? `1 factor seleccionado: ${factoresSeleccionados[0].nombre}`
-                      : `${factoresSeleccionados.length} factores seleccionados`}
-                  </span>
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => setSeleccionadosIds([])}
+                    onClick={() => setSelectedId(null)}
                   >
                     Limpiar selección
                   </Button>
                 </Stack>
 
                 <Stack direction="row" align="center" gap="sm" wrap>
-                  {factoresSeleccionados.length === 1 && (
-                    <ModificarFactorModal
-                      factor={factoresSeleccionados[0]}
-                      onModificado={() => {
-                        setSeleccionadosIds([]);
-                        recargar();
-                      }}
-                    />
-                  )}
+                  <ModificarFactorModal
+                    factor={factorSeleccionado}
+                    onModificado={() => {
+                      setSelectedId(null);
+                      recargar();
+                    }}
+                  />
                   <EliminarFactorModal
-                    factores={factoresSeleccionados}
+                    factores={[factorSeleccionado]}
                     onEliminado={() => {
-                      setSeleccionadosIds([]);
+                      setSelectedId(null);
                       recargar();
                     }}
                   />
