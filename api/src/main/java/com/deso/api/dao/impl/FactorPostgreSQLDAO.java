@@ -80,4 +80,22 @@ public class FactorPostgreSQLDAO implements FactorDAO {
             return entityManager.merge(factor);
         }
     }
+
+    @Override
+    public List<Factor> buscar(String nombre) {
+        // Preparamos el parámetro para la búsqueda parcial (ej: "%tiempo%")
+        String parametroNombre = (nombre == null || nombre.isBlank()) 
+                ? null 
+                : "%" + nombre.strip().toLowerCase(java.util.Locale.ROOT) + "%";
+
+        return entityManager.createQuery("""
+                SELECT f FROM Factor f
+                JOIN FETCH f.competencia
+                WHERE f.eliminado = false
+                AND (:nombre IS NULL OR lower(f.nombre) LIKE :nombre)
+                ORDER BY f.competencia.id ASC, f.orden ASC
+                """, Factor.class)
+                .setParameter("nombre", parametroNombre)
+                .getResultList();
+    }
 }

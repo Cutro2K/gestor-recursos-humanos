@@ -15,6 +15,8 @@ public interface FactorDAO {
     boolean existePorCompetenciaYOrden(Long competenciaId, Integer orden);
     
     List<Factor> listarActivosPorCompetencia(Long competenciaId);
-    
+
+    List<Factor> buscar(String nombre);
+
     Factor guardar(Factor factor);
 }
