@@ -217,4 +217,31 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
+    // 8. Recurso no encontrado en base de datos -> 404 Not Found
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoNoEncontrado(
+            RecursoNoEncontradoException ex, HttpServletRequest request) {
+        log.warn("Recurso no encontrado en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        return respuestaError(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage(), request);
+    }
+
+    // 9. Recurso duplicado (violación de unicidad de negocio) -> 409 Conflict
+    @ExceptionHandler(RecursoDuplicadoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoDuplicado(
+            RecursoDuplicadoException ex, HttpServletRequest request) {
+        log.warn("Recurso duplicado en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        return respuestaError(HttpStatus.CONFLICT, "Recurso duplicado", ex.getMessage(), request);
+    }
+
+    // 10. Argumento inválido en reglas de negocio -> 400 Bad Request
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        log.warn("Argumento inválido en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        return respuestaError(HttpStatus.BAD_REQUEST, "Petición inválida", ex.getMessage(), request);
+    }
+
 }

@@ -3,6 +3,8 @@ package com.deso.api.service;
 import com.deso.api.dao.CompetenciaDAO;
 import com.deso.api.dao.FactorDAO;
 import com.deso.api.dto.FactorDTO;
+import com.deso.api.exception.RecursoDuplicadoException;
+import com.deso.api.exception.RecursoNoEncontradoException;
 import com.deso.api.model.entity.Competencia;
 import com.deso.api.model.entity.Factor;
 import org.springframework.stereotype.Service;
@@ -24,7 +26,7 @@ public class GestorFactores {
     public void darDeAlta(FactorDTO datos) {
         // 1. Validar existencia de la competencia padre
         Competencia competencia = competenciaDAO.buscarPorId(datos.getCompetenciaId())
-                .orElseThrow(() -> new IllegalArgumentException("La competencia padre especificada no existe."));
+                .orElseThrow(() -> new RecursoNoEncontradoException("La competencia padre especificada no existe."));
 
         if (Boolean.TRUE.equals(competencia.getEliminada())) {
             throw new IllegalArgumentException("No se pueden agregar factores a una competencia eliminada.");
@@ -32,16 +34,16 @@ public class GestorFactores {
 
         // 2. Validar unicidad de código y nombre (Globales según DER)
         if (factorDAO.existePorCodigo(datos.getCodigo())) {
-            throw new IllegalArgumentException("El código del factor ya se encuentra registrado.");
+            throw new RecursoDuplicadoException("El código del factor ya se encuentra registrado.");
         }
         
         if (factorDAO.existePorNombre(datos.getNombre())) {
-            throw new IllegalArgumentException("El nombre del factor ya se encuentra registrado.");
+            throw new RecursoDuplicadoException("El nombre del factor ya se encuentra registrado.");
         }
 
         // 3. Validar unicidad del orden dentro de la misma competencia (UQ en DER)
         if (factorDAO.existePorCompetenciaYOrden(competencia.getId(), datos.getOrden())) {
-            throw new IllegalArgumentException("El orden " + datos.getOrden() + " ya está en uso para esta competencia.");
+            throw new RecursoDuplicadoException("El orden " + datos.getOrden() + " ya está en uso para esta competencia.");
         }
 
         // 4. Mapear y persistir la entidad
