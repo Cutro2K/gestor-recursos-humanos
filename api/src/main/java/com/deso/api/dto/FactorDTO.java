@@ -15,6 +15,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class FactorDTO {
 
+    private Long id;
+
     @NotNull(message = "La competencia es obligatoria.")
     private Long competenciaId;
 

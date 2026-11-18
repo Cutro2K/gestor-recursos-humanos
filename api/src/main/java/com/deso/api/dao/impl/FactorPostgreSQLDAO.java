@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Repository
@@ -15,18 +16,24 @@ public class FactorPostgreSQLDAO implements FactorDAO {
 
     private final EntityManager entityManager;
 
-    public FactorPostgreSQLDAO(EntityManager entityManager) {
+    public FactorPostgreSQLDAO(
+            EntityManager entityManager
+        ) {
         this.entityManager = entityManager;
     }
 
     @Override
     public Optional<Factor> buscarPorId(Long id) {
+        // IMPORTANTE: Este método busca por clave primaria sin filtrar por baja lógica.
+        // Quien lo invoque debe verificar el atributo factor.getEliminado() según corresponda.
         if (id == null) return Optional.empty();
         return Optional.ofNullable(entityManager.find(Factor.class, id));
     }
 
     @Override
-    public boolean existePorCodigo(String codigo) {
+    public boolean existePorCodigo(
+            String codigo
+        ) {
         Long count = entityManager.createQuery("""
                 SELECT COUNT(f) FROM Factor f 
                 WHERE lower(f.codigo) = lower(:codigo)
@@ -37,7 +44,9 @@ public class FactorPostgreSQLDAO implements FactorDAO {
     }
 
     @Override
-    public boolean existePorNombre(String nombre) {
+    public boolean existePorNombre(
+            String nombre
+        ) {
         Long count = entityManager.createQuery("""
                 SELECT COUNT(f) FROM Factor f 
                 WHERE lower(f.nombre) = lower(:nombre)
@@ -48,7 +57,10 @@ public class FactorPostgreSQLDAO implements FactorDAO {
     }
 
     @Override
-    public boolean existePorCompetenciaYOrden(Long competenciaId, Integer orden) {
+    public boolean existePorCompetenciaYOrden(
+            Long competenciaId, 
+            Integer orden
+        ) {
         Long count = entityManager.createQuery("""
                 SELECT COUNT(f) FROM Factor f 
                 WHERE f.competencia.id = :competenciaId AND f.orden = :orden
@@ -60,9 +72,12 @@ public class FactorPostgreSQLDAO implements FactorDAO {
     }
 
     @Override
-    public List<Factor> listarActivosPorCompetencia(Long competenciaId) {
+    public List<Factor> listarActivosPorCompetencia(
+            Long competenciaId
+        ) {
         return entityManager.createQuery("""
-                SELECT f FROM Factor f 
+                SELECT f FROM Factor f
+                JOIN FETCH f.competencia
                 WHERE f.competencia.id = :competenciaId AND f.eliminado = false
                 ORDER BY f.orden ASC
                 """, Factor.class)
@@ -72,7 +87,9 @@ public class FactorPostgreSQLDAO implements FactorDAO {
 
     @Override
     @Transactional
-    public Factor guardar(Factor factor) {
+    public Factor guardar(
+            Factor factor
+        ) {
         if (factor.getId() == null) {
             entityManager.persist(factor);
             return factor;
@@ -82,20 +99,43 @@ public class FactorPostgreSQLDAO implements FactorDAO {
     }
 
     @Override
-    public List<Factor> buscar(String nombre) {
-        // Preparamos el parámetro para la búsqueda parcial (ej: "%tiempo%")
-        String parametroNombre = (nombre == null || nombre.isBlank()) 
-                ? null 
-                : "%" + nombre.strip().toLowerCase(java.util.Locale.ROOT) + "%";
+    public List<Factor> buscarPorNombres(
+            String nombreCompetencia, 
+            String nombreFactor, 
+            Integer offset, 
+            Integer cantidad
+        ) {
+        String patronCompetencia = patronDeBusqueda(nombreCompetencia);
+        String patronFactor = patronDeBusqueda(nombreFactor);
+
+        int primerResultado = (offset != null && offset >= 0) ? offset : 0;
+        int maxResultados = (cantidad != null && cantidad > 0) ? cantidad : 50;
 
         return entityManager.createQuery("""
                 SELECT f FROM Factor f
-                JOIN FETCH f.competencia
+                JOIN FETCH f.competencia c
                 WHERE f.eliminado = false
-                AND (:nombre IS NULL OR lower(f.nombre) LIKE :nombre)
-                ORDER BY f.competencia.id ASC, f.orden ASC
+                AND (:nombreCompetencia IS NULL OR lower(c.nombre) LIKE :nombreCompetencia ESCAPE '!')
+                AND (:nombreFactor IS NULL OR lower(f.nombre) LIKE :nombreFactor ESCAPE '!')
+                ORDER BY f.nombre ASC, f.id ASC
                 """, Factor.class)
-                .setParameter("nombre", parametroNombre)
+                .setParameter("nombreCompetencia", patronCompetencia)
+                .setParameter("nombreFactor", patronFactor)
+                .setFirstResult(primerResultado)
+                .setMaxResults(maxResultados)
                 .getResultList();
+    }
+
+    private String patronDeBusqueda(
+            String valor
+        ) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        String texto = valor.strip().toLowerCase(Locale.ROOT)
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+        return "%" + texto + "%";
     }
 }

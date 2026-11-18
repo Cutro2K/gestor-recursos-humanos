@@ -3,12 +3,16 @@ package com.deso.api.service;
 import com.deso.api.dao.CompetenciaDAO;
 import com.deso.api.dao.FactorDAO;
 import com.deso.api.dto.FactorDTO;
+import com.deso.api.dto.ListadoGestorFactoresDTO;
+import com.deso.api.exception.RecursoActualmenteEliminadoException;
 import com.deso.api.exception.RecursoDuplicadoException;
 import com.deso.api.exception.RecursoNoEncontradoException;
 import com.deso.api.model.entity.Competencia;
 import com.deso.api.model.entity.Factor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -23,20 +27,20 @@ public class GestorFactores {
     }
 
     @Transactional
-    public void darDeAlta(FactorDTO datos) {
-        // 1. Validar existencia de la competencia padre
+    public FactorDTO darDeAlta(FactorDTO datos) {
+        // 1. Validar existencia y estado de la competencia padre
         Competencia competencia = competenciaDAO.buscarPorId(datos.getCompetenciaId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("La competencia padre especificada no existe."));
 
         if (Boolean.TRUE.equals(competencia.getEliminada())) {
-            throw new IllegalArgumentException("No se pueden agregar factores a una competencia eliminada.");
+            throw new RecursoActualmenteEliminadoException("No se pueden agregar factores a una competencia eliminada.");
         }
 
         // 2. Validar unicidad de código y nombre (Globales según DER)
         if (factorDAO.existePorCodigo(datos.getCodigo())) {
             throw new RecursoDuplicadoException("El código del factor ya se encuentra registrado.");
         }
-        
+
         if (factorDAO.existePorNombre(datos.getNombre())) {
             throw new RecursoDuplicadoException("El nombre del factor ya se encuentra registrado.");
         }
@@ -53,8 +57,66 @@ public class GestorFactores {
         nuevoFactor.setOrden(datos.getOrden());
         nuevoFactor.setDescripcion(datos.getDescripcion() != null ? datos.getDescripcion().strip() : null);
         nuevoFactor.setCompetencia(competencia);
-        nuevoFactor.setEliminado(false); 
+        nuevoFactor.setEliminado(false);
 
-        factorDAO.guardar(nuevoFactor);
+        Factor guardado = factorDAO.guardar(nuevoFactor);
+        return mapearAFactorDTO(guardado);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ListadoGestorFactoresDTO> buscarPorNombres(
+            String nombreCompetencia, String nombreFactor, Integer offset, Integer cantidad) {
+        return factorDAO.buscarPorNombres(nombreCompetencia, nombreFactor, offset, cantidad)
+                .stream()
+                .map(this::mapearAListadoGestorDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<FactorDTO> listarPorCompetencia(Long competenciaId) {
+        Competencia competencia = competenciaDAO.buscarPorId(competenciaId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encuentran factores para esta competencia."));
+
+        if (Boolean.TRUE.equals(competencia.getEliminada())) {
+            throw new RecursoNoEncontradoException("No se encuentran factores para esta competencia.");
+        }
+
+        return factorDAO.listarActivosPorCompetencia(competenciaId)
+                .stream()
+                .map(this::mapearAFactorDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public FactorDTO buscarPorId(Long id) {
+        Factor factor = factorDAO.buscarPorId(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el factor con ID " + id + "."));
+
+        if (Boolean.TRUE.equals(factor.getEliminado())) {
+            throw new RecursoActualmenteEliminadoException("El factor con ID " + id + " se encuentra eliminado.");
+        }
+
+        return mapearAFactorDTO(factor);
+    }
+
+    private FactorDTO mapearAFactorDTO(Factor factor) {
+        return new FactorDTO(
+                factor.getId(),
+                factor.getCompetencia().getId(),
+                factor.getCodigo(),
+                factor.getNombre(),
+                factor.getOrden(),
+                factor.getDescripcion()
+        );
+    }
+
+    private ListadoGestorFactoresDTO mapearAListadoGestorDTO(Factor factor) {
+        return new ListadoGestorFactoresDTO(
+                factor.getCodigo(),
+                factor.getNombre(),
+                factor.getCompetencia().getNombre(),
+                factor.getOrden(),
+                factor.getDescripcion()
+        );
     }
 }

@@ -226,7 +226,16 @@ public class GlobalExceptionHandler {
         return respuestaError(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage(), request);
     }
 
-    // 9. Recurso duplicado (violación de unicidad de negocio) -> 409 Conflict
+    // 9. Recurso actualmente eliminado (baja lógica) -> 404 Not Found
+    @ExceptionHandler(RecursoActualmenteEliminadoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoActualmenteEliminado(
+            RecursoActualmenteEliminadoException ex, HttpServletRequest request) {
+        log.warn("Recurso actualmente eliminado en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        return respuestaError(HttpStatus.NOT_FOUND, "Recurso actualmente eliminado", ex.getMessage(), request);
+    }
+
+    // 10. Recurso duplicado (violación de unicidad de negocio) -> 409 Conflict
     @ExceptionHandler(RecursoDuplicadoException.class)
     public ResponseEntity<ErrorResponseDTO> handleRecursoDuplicado(
             RecursoDuplicadoException ex, HttpServletRequest request) {

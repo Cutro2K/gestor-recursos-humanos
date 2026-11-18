@@ -16,7 +16,7 @@ public interface FactorDAO {
     
     List<Factor> listarActivosPorCompetencia(Long competenciaId);
 
-    List<Factor> buscar(String nombre);
+    List<Factor> buscarPorNombres(String nombreCompetencia, String nombreFactor, Integer offset, Integer cantidad);
 
     Factor guardar(Factor factor);
 }
