@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { register } from "node:module";
 import { afterEach, mock, test } from "node:test";
-import { API_BASE_URL, ApiError } from "../src/service/api.ts";
-import { crearCompetencia, listarCompetencias } from "../src/service/competencias.ts";
+
+register(new URL("./ts-resolver.mjs", import.meta.url));
+
+const { API_BASE_URL, ApiError } = await import("../src/service/api.ts");
+const { crearCompetencia, listarCompetencias } = await import("../src/service/competencias.ts");
 
 afterEach(() => mock.restoreAll());
 
@@ -70,7 +74,7 @@ test("crearCompetencia serializa el payload en POST y retorna la competencia cre
   assert.equal(creada.codigo, "COMP-05");
 });
 
-test("crearCompetencia propaga ApiError con status 409 cuando el código o nombre ya existen", async () => {
+test("crearCompetencia propaga ApiError con status 409 y erroresValidacion cuando el código o nombre ya existen", async () => {
   mock.method(globalThis, "fetch", async () => {
     return Response.json(
       {
@@ -78,6 +82,9 @@ test("crearCompetencia propaga ApiError con status 409 cuando el código o nombr
         error: "Recurso Duplicado",
         message: "Ya existe una competencia registrada con el código 'COMP-01'.",
         path: "/api/competencias",
+        erroresValidacion: {
+          codigo: "Ya existe una competencia registrada con el código 'COMP-01'.",
+        },
       },
       { status: 409, headers: { "Content-Type": "application/json" } },
     );
@@ -93,6 +100,10 @@ test("crearCompetencia propaga ApiError con status 409 cuando el código o nombr
       assert.ok(error instanceof ApiError);
       assert.equal(error.status, 409);
       assert.match(error.message, /Ya existe una competencia registrada con el código 'COMP-01'/);
+      assert.equal(
+        error.details?.erroresValidacion?.codigo,
+        "Ya existe una competencia registrada con el código 'COMP-01'.",
+      );
       return true;
     },
   );
