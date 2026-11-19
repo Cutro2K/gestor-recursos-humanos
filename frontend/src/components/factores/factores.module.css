@@ -316,22 +316,6 @@
   vertical-align: middle;
 }
 
-/* Recorta la barra mientras su altura se anima; el padding va adentro para que llegue a 0. */
-.selectionBarClip {
-  overflow: hidden;
-  /* Es lo último del Surface (rounded-2xl, borde de 1px): sin esto, el fondo de la barra
-     tapa las esquinas redondeadas de abajo. */
-  border-bottom-left-radius: calc(var(--radius-2xl, 1rem) - 1px);
-  border-bottom-right-radius: calc(var(--radius-2xl, 1rem) - 1px);
-}
-
-.selectionActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
 .selectionBar {
   display: flex;
   flex-wrap: wrap;
