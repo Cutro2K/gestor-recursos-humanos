@@ -13,7 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ListadoGestorFactoresDTO {
-
+    private Long id;
     private String codigo;
     private String nombreFactor;
     private String nombreCompetencia;

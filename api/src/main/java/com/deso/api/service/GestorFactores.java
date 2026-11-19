@@ -27,7 +27,9 @@ public class GestorFactores {
     }
 
     @Transactional
-    public FactorDTO darDeAlta(FactorDTO datos) {
+    public FactorDTO darDeAlta(
+        FactorDTO datos
+    ) {
         // 1. Validar existencia y estado de la competencia padre
         Competencia competencia = competenciaDAO.buscarPorId(datos.getCompetenciaId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("La competencia padre especificada no existe."));
@@ -63,17 +65,77 @@ public class GestorFactores {
         return mapearAFactorDTO(guardado);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional 
+    public void eliminarLogicamente(
+        Long id
+    ) {
+        Factor factor = factorDAO.buscarPorId(id)
+            .orElseThrow(() -> new RecursoNoEncontradoException("El factor a eliminar no existe."));
+        if (Boolean.TRUE.equals(factor.getEliminado())) {
+            throw new RecursoActualmenteEliminadoException("El factor ya se encuentra eliminado.");
+        }
+        factorDAO.elminarLogicamente(id);
+    }
+
+    @Transactional 
+    public FactorDTO actualizar(FactorDTO newFactor) {
+        Factor factor = factorDAO.buscarPorId(newFactor.getId())
+            .orElseThrow(() -> new RecursoNoEncontradoException("El factor a actualizar no existe."));
+        
+        if (Boolean.TRUE.equals(factor.getEliminado())) {
+            throw new RecursoActualmenteEliminadoException("El factor a actualizar ha sido eliminado.");
+        }
+
+        Competencia competenciaRelacionada = competenciaDAO.buscarPorId(newFactor.getCompetenciaId())
+            .orElseThrow(() -> new RecursoNoEncontradoException("La competencia ingresada no existe."));
+
+        if (Boolean.TRUE.equals(competenciaRelacionada.getEliminada())) {
+            throw new RecursoActualmenteEliminadoException("La competencia ingresada ha sido eliminada.");
+        }
+
+        // Chequeo de unicidad de Codigo no hace falta chequear ya que el atributo no es modificable.
+
+        // Chequeo de unicidad por nombre: 
+        if (Boolean.TRUE.equals(
+            (!factor.getNombre().equalsIgnoreCase(newFactor.getNombre().strip()))
+            && factorDAO.existePorNombre(newFactor.getNombre()) 
+        )) {
+            throw new RecursoDuplicadoException("Ya existe un factor con ese nombre.");
+        }
+
+        // Chequeo de unicidad por competencia y orden: 
+        if (Boolean.TRUE.equals(
+            factorDAO.existePorCompetenciaYOrden(newFactor.getCompetenciaId(), newFactor.getOrden())
+            && (!factor.getCompetencia().getId().equals(newFactor.getCompetenciaId()) || !factor.getOrden().equals(newFactor.getOrden()))
+        )) {    
+            throw new RecursoDuplicadoException("Ya existe un factor con ese orden relacionado a esa competencia.");
+        }
+
+        // Actualizar valores de la entidad
+        factor.setCompetencia(competenciaRelacionada);
+        factor.setDescripcion(newFactor.getDescripcion() != null ? newFactor.getDescripcion().strip() : null);
+        factor.setNombre(newFactor.getNombre().strip());
+        factor.setOrden(newFactor.getOrden());
+
+        FactorDTO guardado = mapearAFactorDTO(factorDAO.guardar(factor));
+        return guardado;
+    }
+
     public List<ListadoGestorFactoresDTO> buscarPorNombres(
-            String nombreCompetencia, String nombreFactor, Integer offset, Integer cantidad) {
+            String nombreCompetencia, 
+            String nombreFactor, 
+            Integer offset, 
+            Integer cantidad
+    ) {
         return factorDAO.buscarPorNombres(nombreCompetencia, nombreFactor, offset, cantidad)
                 .stream()
                 .map(this::mapearAListadoGestorDTO)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<FactorDTO> listarPorCompetencia(Long competenciaId) {
+    public List<FactorDTO> listarPorCompetencia(
+        Long competenciaId
+    ) {
         Competencia competencia = competenciaDAO.buscarPorId(competenciaId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encuentran factores para esta competencia."));
 
@@ -87,8 +149,9 @@ public class GestorFactores {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public FactorDTO buscarPorId(Long id) {
+    public FactorDTO buscarPorId(
+        Long id
+    ) {
         Factor factor = factorDAO.buscarPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el factor con ID " + id + "."));
 
@@ -99,7 +162,9 @@ public class GestorFactores {
         return mapearAFactorDTO(factor);
     }
 
-    private FactorDTO mapearAFactorDTO(Factor factor) {
+    private FactorDTO mapearAFactorDTO(
+        Factor factor
+    ) {
         return new FactorDTO(
                 factor.getId(),
                 factor.getCompetencia().getId(),
@@ -110,8 +175,11 @@ public class GestorFactores {
         );
     }
 
-    private ListadoGestorFactoresDTO mapearAListadoGestorDTO(Factor factor) {
+    private ListadoGestorFactoresDTO mapearAListadoGestorDTO(
+        Factor factor
+    ) {
         return new ListadoGestorFactoresDTO(
+                factor.getId(),
                 factor.getCodigo(),
                 factor.getNombre(),
                 factor.getCompetencia().getNombre(),

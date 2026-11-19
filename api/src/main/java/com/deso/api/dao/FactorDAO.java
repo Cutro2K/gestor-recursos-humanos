@@ -19,4 +19,6 @@ public interface FactorDAO {
     List<Factor> buscarPorNombres(String nombreCompetencia, String nombreFactor, Integer offset, Integer cantidad);
 
     Factor guardar(Factor factor);
+
+    void elminarLogicamente(Long id);
 }

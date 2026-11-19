@@ -99,6 +99,15 @@ public class FactorPostgreSQLDAO implements FactorDAO {
     }
 
     @Override
+    @Transactional 
+    public void elminarLogicamente(Long id) {
+        Factor factor = entityManager.find(Factor.class, id);
+        if (factor != null) {
+            factor.setEliminado(true);
+        }
+    }
+
+    @Override
     public List<Factor> buscarPorNombres(
             String nombreCompetencia, 
             String nombreFactor, 
