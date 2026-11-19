@@ -59,7 +59,7 @@ class CompetenciaControllerTests {
     void postCreaCompetenciaYRetorna201() throws Exception {
         String body = """
                 {
-                    "codigo": "COMP-01",
+                    "codigo": "comp-01",
                     "nombre": "Gestión de Proyectos",
                     "tipo": "TECNICA",
                     "descripcion": "Capacidad de planificar y gestionar proyectos."
@@ -106,6 +106,7 @@ class CompetenciaControllerTests {
         JsonNode nodo = json.readTree(response.body());
         assertThat(nodo.path("status").asInt()).isEqualTo(409);
         assertThat(nodo.path("message").asString()).contains("COMP-01");
+        assertThat(nodo.path("erroresValidacion").path("codigo").asString()).contains("COMP-01");
     }
 
     @Test
@@ -131,6 +132,7 @@ class CompetenciaControllerTests {
         JsonNode nodo = json.readTree(response.body());
         assertThat(nodo.path("status").asInt()).isEqualTo(409);
         assertThat(nodo.path("message").asString()).contains("Liderazgo");
+        assertThat(nodo.path("erroresValidacion").path("nombre").asString()).contains("Liderazgo");
     }
 
     @Test
@@ -153,6 +155,9 @@ class CompetenciaControllerTests {
 
         JsonNode nodo = json.readTree(response.body());
         assertThat(nodo.path("status").asInt()).isEqualTo(400);
+        assertThat(nodo.path("erroresValidacion").path("codigo").isMissingNode()).isFalse();
+        assertThat(nodo.path("erroresValidacion").path("nombre").isMissingNode()).isFalse();
+        assertThat(nodo.path("erroresValidacion").path("tipo").isMissingNode()).isFalse();
     }
 
     @Test

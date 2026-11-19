@@ -208,7 +208,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleRecursoDuplicado(
             RecursoDuplicadoException ex, HttpServletRequest request) {
         log.warn("Conflicto de recurso duplicado en {}: {}", request.getRequestURI(), ex.getMessage());
-        return respuestaError(HttpStatus.CONFLICT, "Recurso Duplicado", ex.getMessage(), request);
+
+        Map<String, String> errores = null;
+        if (ex.getCampo() != null && !ex.getCampo().isBlank()) {
+            errores = Map.of(ex.getCampo(), ex.getMessage());
+        }
+
+        ErrorResponseDTO respuesta = new ErrorResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Recurso Duplicado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                errores
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON).body(respuesta);
     }
 
     // 8. Recurso no encontrado (CU 13) -> 404 Not Found
