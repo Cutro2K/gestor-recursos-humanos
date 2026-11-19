@@ -1,6 +1,7 @@
 package com.deso.api.dto;
 
 import com.deso.api.model.enums.TipoCompetencia;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -20,6 +21,7 @@ import lombok.Setter;
 @Builder
 public class CompetenciaDTO {
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Long id;
 
     @NotBlank(message = "El código de la competencia es obligatorio.")
@@ -36,6 +38,7 @@ public class CompetenciaDTO {
     @Size(max = 1000, message = "La descripción no puede tener más de 1000 caracteres.")
     private String descripcion;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @Builder.Default
     private Boolean eliminada = false;
 }

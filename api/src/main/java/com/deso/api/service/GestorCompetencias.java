@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -30,11 +31,11 @@ public class GestorCompetencias {
 
     /**
      * Da de alta una nueva competencia verificando unicidad de código y nombre.
+     * Las restricciones de campos obligatorios y longitudes son validadas mediante Bean Validation (@Valid).
      *
-     * @param datos DTO con los datos de la competencia a registrar (validados por Bean Validation).
+     * @param datos DTO con los datos de la competencia a registrar.
      * @return DTO de la competencia persistida con su ID generado.
      * @throws RecursoDuplicadoException Si ya existe una competencia con el mismo código o nombre.
-     * @throws IllegalArgumentException  Si alguno de los campos obligatorios es inválido.
      */
     @Transactional
     public CompetenciaDTO darDeAlta(@NotNull @Valid CompetenciaDTO datos) {
@@ -42,39 +43,19 @@ public class GestorCompetencias {
             throw new IllegalArgumentException("Los datos de la competencia no pueden ser nulos.");
         }
 
-        String codigo = normalizarTexto(datos.getCodigo());
-        if (codigo == null || codigo.isBlank()) {
-            throw new IllegalArgumentException("El código de la competencia es obligatorio.");
-        }
-        if (codigo.length() > 20) {
-            throw new IllegalArgumentException("El código no puede superar los 20 caracteres.");
-        }
-
-        String nombre = normalizarTexto(datos.getNombre());
-        if (nombre == null || nombre.isBlank()) {
-            throw new IllegalArgumentException("El nombre de la competencia es obligatorio.");
-        }
-        if (nombre.length() > 75) {
-            throw new IllegalArgumentException("El nombre no puede superar los 75 caracteres.");
-        }
-
-        if (datos.getTipo() == null) {
-            throw new IllegalArgumentException("El tipo de competencia es obligatorio (TECNICA o ACTITUDINAL).");
-        }
-
+        // Reglas de negocio backend: normalización y mayúsculas en código
+        String codigo = datos.getCodigo() != null ? datos.getCodigo().strip().toUpperCase(Locale.ROOT) : null;
+        String nombre = datos.getNombre() != null ? datos.getNombre().strip() : null;
         String descripcion = normalizarTexto(datos.getDescripcion());
-        if (descripcion != null && descripcion.length() > 1000) {
-            throw new IllegalArgumentException("La descripción no puede superar los 1000 caracteres.");
-        }
 
         // Validación de unicidad de código
-        if (competenciaDAO.existePorCodigo(codigo)) {
-            throw new RecursoDuplicadoException("Ya existe una competencia registrada con el código '" + codigo + "'.");
+        if (codigo != null && competenciaDAO.existePorCodigo(codigo)) {
+            throw new RecursoDuplicadoException("codigo", "Ya existe una competencia registrada con el código '" + codigo + "'.");
         }
 
         // Validación de unicidad de nombre
-        if (competenciaDAO.existePorNombre(nombre)) {
-            throw new RecursoDuplicadoException("Ya existe una competencia registrada con el nombre '" + nombre + "'.");
+        if (nombre != null && competenciaDAO.existePorNombre(nombre)) {
+            throw new RecursoDuplicadoException("nombre", "Ya existe una competencia registrada con el nombre '" + nombre + "'.");
         }
 
         Competencia entidad = new Competencia();
@@ -100,14 +81,6 @@ public class GestorCompetencias {
     }
 
     /**
-     * Búsqueda por nombre conforme a la especificación de diseño.
-     */
-    @Transactional(readOnly = true)
-    public List<CompetenciaDTO> buscar(String nombre) {
-        return listar(nombre, null, null);
-    }
-
-    /**
      * Obtiene una competencia por su identificador primario.
      */
     @Transactional(readOnly = true)
@@ -118,68 +91,6 @@ public class GestorCompetencias {
         return competenciaDAO.buscarPorId(id)
                 .map(this::mapearADTO)
                 .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la competencia con ID " + id + "."));
-    }
-
-    /**
-     * Modifica los datos de una competencia existente.
-     */
-    @Transactional
-    public CompetenciaDTO modificar(@NotNull @Valid CompetenciaDTO datos) {
-        if (datos == null || datos.getId() == null) {
-            throw new IllegalArgumentException("Debe indicar el ID de la competencia a modificar.");
-        }
-
-        Competencia existente = competenciaDAO.buscarPorId(datos.getId())
-                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró la competencia con ID " + datos.getId() + "."));
-
-        String codigo = normalizarTexto(datos.getCodigo());
-        if (codigo != null && !codigo.isBlank()) {
-            if (codigo.length() > 20) {
-                throw new IllegalArgumentException("El código no puede superar los 20 caracteres.");
-            }
-            if (!codigo.equalsIgnoreCase(existente.getCodigo()) && competenciaDAO.existePorCodigo(codigo)) {
-                throw new RecursoDuplicadoException("Ya existe una competencia registrada con el código '" + codigo + "'.");
-            }
-            existente.setCodigo(codigo);
-        }
-
-        String nombre = normalizarTexto(datos.getNombre());
-        if (nombre != null && !nombre.isBlank()) {
-            if (nombre.length() > 75) {
-                throw new IllegalArgumentException("El nombre no puede superar los 75 caracteres.");
-            }
-            if (!nombre.equalsIgnoreCase(existente.getNombre()) && competenciaDAO.existePorNombre(nombre)) {
-                throw new RecursoDuplicadoException("Ya existe una competencia registrada con el nombre '" + nombre + "'.");
-            }
-            existente.setNombre(nombre);
-        }
-
-        if (datos.getTipo() != null) {
-            existente.setTipo(datos.getTipo());
-        }
-
-        String descripcion = normalizarTexto(datos.getDescripcion());
-        if (descripcion != null && descripcion.length() > 1000) {
-            throw new IllegalArgumentException("La descripción no puede superar los 1000 caracteres.");
-        }
-        existente.setDescripcion(descripcion);
-
-        Competencia actualizada = competenciaDAO.guardar(existente);
-        return mapearADTO(actualizada);
-    }
-
-    /**
-     * Realiza la baja lógica de la competencia.
-     */
-    @Transactional
-    public void darDeBaja(Long id, String usuario) {
-        if (id == null) {
-            throw new IllegalArgumentException("El ID de la competencia no puede ser nulo.");
-        }
-        if (competenciaDAO.buscarPorId(id).isEmpty()) {
-            throw new RecursoNoEncontradoException("No se encontró la competencia con ID " + id + " para dar de baja.");
-        }
-        competenciaDAO.eliminarLogicamente(id);
     }
 
     private CompetenciaDTO mapearADTO(Competencia entidad) {

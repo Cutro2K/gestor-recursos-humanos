@@ -26,12 +26,12 @@ class GestorCompetenciasTests {
     }
 
     @Test
-    void darDeAltaRegistraCorrectamenteUnaCompetencia() {
+    void darDeAltaRegistraCorrectamenteUnaCompetenciaYConvierteCodigoAMayusculas() {
         CompetenciaDTO dto = CompetenciaDTO.builder()
-                .codigo("COMP-10")
-                .nombre("Liderazgo")
+                .codigo("comp-10")
+                .nombre("  Liderazgo  ")
                 .tipo(TipoCompetencia.ACTITUDINAL)
-                .descripcion("Capacidad para orientar y motivar al equipo.")
+                .descripcion("  Capacidad para orientar y motivar al equipo.  ")
                 .build();
 
         CompetenciaDTO resultado = gestor.darDeAlta(dto);
@@ -41,6 +41,7 @@ class GestorCompetenciasTests {
         assertThat(resultado.getCodigo()).isEqualTo("COMP-10");
         assertThat(resultado.getNombre()).isEqualTo("Liderazgo");
         assertThat(resultado.getTipo()).isEqualTo(TipoCompetencia.ACTITUDINAL);
+        assertThat(resultado.getDescripcion()).isEqualTo("Capacidad para orientar y motivar al equipo.");
         assertThat(resultado.getEliminada()).isFalse();
 
         Competencia persistida = dao.buscarPorId(resultado.getId()).orElse(null);
@@ -49,7 +50,7 @@ class GestorCompetenciasTests {
     }
 
     @Test
-    void darDeAltaFallaSiCodigoYaExiste() {
+    void darDeAltaFallaSiCodigoYaExisteYDevuelveCampoEnConflicto() {
         dao.guardar(new Competencia(null, "COMP-01", "Gestión", null, TipoCompetencia.TECNICA, false));
 
         CompetenciaDTO dto = CompetenciaDTO.builder()
@@ -60,11 +61,12 @@ class GestorCompetenciasTests {
 
         assertThatThrownBy(() -> gestor.darDeAlta(dto))
                 .isInstanceOf(RecursoDuplicadoException.class)
-                .hasMessageContaining("comp-01");
+                .hasMessageContaining("COMP-01")
+                .satisfies(ex -> assertThat(((RecursoDuplicadoException) ex).getCampo()).isEqualTo("codigo"));
     }
 
     @Test
-    void darDeAltaFallaSiNombreYaExiste() {
+    void darDeAltaFallaSiNombreYaExisteYDevuelveCampoEnConflicto() {
         dao.guardar(new Competencia(null, "COMP-99", "Lealtad", null, TipoCompetencia.ACTITUDINAL, false));
 
         CompetenciaDTO dto = CompetenciaDTO.builder()
@@ -75,61 +77,13 @@ class GestorCompetenciasTests {
 
         assertThatThrownBy(() -> gestor.darDeAlta(dto))
                 .isInstanceOf(RecursoDuplicadoException.class)
-                .hasMessageContaining("lealtad");
+                .hasMessageContaining("lealtad")
+                .satisfies(ex -> assertThat(((RecursoDuplicadoException) ex).getCampo()).isEqualTo("nombre"));
     }
 
     @Test
-    void darDeAltaFallaConCamposObligatoriosFaltantes() {
+    void darDeAltaFallaSiDatosSonNulos() {
         assertThatThrownBy(() -> gestor.darDeAlta(null))
-                .isInstanceOf(IllegalArgumentException.class);
-
-        CompetenciaDTO sinCodigo = CompetenciaDTO.builder()
-                .nombre("Nombre")
-                .tipo(TipoCompetencia.TECNICA)
-                .build();
-        assertThatThrownBy(() -> gestor.darDeAlta(sinCodigo))
-                .isInstanceOf(IllegalArgumentException.class);
-
-        CompetenciaDTO sinNombre = CompetenciaDTO.builder()
-                .codigo("COD-01")
-                .tipo(TipoCompetencia.TECNICA)
-                .build();
-        assertThatThrownBy(() -> gestor.darDeAlta(sinNombre))
-                .isInstanceOf(IllegalArgumentException.class);
-
-        CompetenciaDTO sinTipo = CompetenciaDTO.builder()
-                .codigo("COD-01")
-                .nombre("Nombre")
-                .build();
-        assertThatThrownBy(() -> gestor.darDeAlta(sinTipo))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    void darDeAltaFallaSiSuperaLongitudesMaximas() {
-        CompetenciaDTO codigoLargo = CompetenciaDTO.builder()
-                .codigo("C".repeat(21))
-                .nombre("Nombre")
-                .tipo(TipoCompetencia.TECNICA)
-                .build();
-        assertThatThrownBy(() -> gestor.darDeAlta(codigoLargo))
-                .isInstanceOf(IllegalArgumentException.class);
-
-        CompetenciaDTO nombreLargo = CompetenciaDTO.builder()
-                .codigo("COMP-01")
-                .nombre("N".repeat(76))
-                .tipo(TipoCompetencia.TECNICA)
-                .build();
-        assertThatThrownBy(() -> gestor.darDeAlta(nombreLargo))
-                .isInstanceOf(IllegalArgumentException.class);
-
-        CompetenciaDTO descLarga = CompetenciaDTO.builder()
-                .codigo("COMP-01")
-                .nombre("Nombre")
-                .tipo(TipoCompetencia.TECNICA)
-                .descripcion("D".repeat(1001))
-                .build();
-        assertThatThrownBy(() -> gestor.darDeAlta(descLarga))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -170,55 +124,9 @@ class GestorCompetenciasTests {
                 .hasMessageContaining(eliminada.getId().toString());
     }
 
-    @Test
-    void modificarActualizaCamposCorrectamente() {
-        Competencia c = dao.guardar(new Competencia(null, "COMP-01", "Original", "Desc", TipoCompetencia.TECNICA, false));
-
-        CompetenciaDTO mod = CompetenciaDTO.builder()
-                .id(c.getId())
-                .nombre("Modificado")
-                .tipo(TipoCompetencia.ACTITUDINAL)
-                .descripcion("Nueva desc")
-                .build();
-
-        CompetenciaDTO resultado = gestor.modificar(mod);
-        assertThat(resultado.getNombre()).isEqualTo("Modificado");
-        assertThat(resultado.getTipo()).isEqualTo(TipoCompetencia.ACTITUDINAL);
-        assertThat(resultado.getDescripcion()).isEqualTo("Nueva desc");
-    }
-
-    @Test
-    void modificarFallaSiCodigoYaExisteEnOtraCompetencia() {
-        dao.guardar(new Competencia(null, "COMP-01", "Comp 1", null, TipoCompetencia.TECNICA, false));
-        Competencia c2 = dao.guardar(new Competencia(null, "COMP-02", "Comp 2", null, TipoCompetencia.TECNICA, false));
-
-        CompetenciaDTO mod = CompetenciaDTO.builder()
-                .id(c2.getId())
-                .codigo("COMP-01")
-                .build();
-
-        assertThatThrownBy(() -> gestor.modificar(mod))
-                .isInstanceOf(RecursoDuplicadoException.class)
-                .hasMessageContaining("COMP-01");
-    }
-
-    @Test
-    void darDeBajaMarcaComoEliminada() {
-        Competencia c = dao.guardar(new Competencia(null, "COMP-01", "Comp 1", null, TipoCompetencia.TECNICA, false));
-
-        gestor.darDeBaja(c.getId(), "admin");
-
-        assertThat(dao.buscarDirecto(c.getId()).getEliminada()).isTrue();
-        assertThat(dao.buscarPorId(c.getId())).isEmpty();
-    }
-
     private static class FakeCompetenciaDAO implements CompetenciaDAO {
         private final Map<Long, Competencia> store = new LinkedHashMap<>();
         private long seq = 1;
-
-        public Competencia buscarDirecto(Long id) {
-            return store.get(id);
-        }
 
         @Override
         public List<Competencia> listarActivas(String nombre, String codigo, TipoCompetencia tipo) {
@@ -241,22 +149,6 @@ class GestorCompetenciasTests {
         }
 
         @Override
-        public Optional<Competencia> buscarPorCodigo(String codigo) {
-            return store.values().stream()
-                    .filter(c -> !Boolean.TRUE.equals(c.getEliminada()))
-                    .filter(c -> c.getCodigo().equalsIgnoreCase(codigo))
-                    .findFirst();
-        }
-
-        @Override
-        public Optional<Competencia> buscarPorNombre(String nombre) {
-            return store.values().stream()
-                    .filter(c -> !Boolean.TRUE.equals(c.getEliminada()))
-                    .filter(c -> c.getNombre().equalsIgnoreCase(nombre))
-                    .findFirst();
-        }
-
-        @Override
         public boolean existePorCodigo(String codigo) {
             return store.values().stream()
                     .anyMatch(c -> c.getCodigo().equalsIgnoreCase(codigo));
@@ -276,14 +168,6 @@ class GestorCompetenciasTests {
             Competencia copia = new Competencia(c.getId(), c.getCodigo(), c.getNombre(), c.getDescripcion(), c.getTipo(), c.getEliminada());
             store.put(c.getId(), copia);
             return copia;
-        }
-
-        @Override
-        public void eliminarLogicamente(Long id) {
-            Competencia c = store.get(id);
-            if (c != null) {
-                c.setEliminada(true);
-            }
         }
     }
 }

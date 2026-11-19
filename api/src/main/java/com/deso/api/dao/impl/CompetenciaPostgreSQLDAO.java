@@ -50,40 +50,6 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
     }
 
     @Override
-    public Optional<Competencia> buscarPorCodigo(String codigo) {
-        if (codigo == null || codigo.isBlank()) {
-            return Optional.empty();
-        }
-
-        return entityManager.createQuery("""
-                SELECT c FROM Competencia c
-                WHERE lower(c.codigo) = lower(:codigo)
-                  AND c.eliminada = false
-                """, Competencia.class)
-                .setParameter("codigo", codigo.strip().toLowerCase(Locale.ROOT))
-                .getResultList()
-                .stream()
-                .findFirst();
-    }
-
-    @Override
-    public Optional<Competencia> buscarPorNombre(String nombre) {
-        if (nombre == null || nombre.isBlank()) {
-            return Optional.empty();
-        }
-
-        return entityManager.createQuery("""
-                SELECT c FROM Competencia c
-                WHERE lower(c.nombre) = lower(:nombre)
-                  AND c.eliminada = false
-                """, Competencia.class)
-                .setParameter("nombre", nombre.strip().toLowerCase(Locale.ROOT))
-                .getResultList()
-                .stream()
-                .findFirst();
-    }
-
-    @Override
     public boolean existePorCodigo(String codigo) {
         if (codigo == null || codigo.isBlank()) {
             return false;
@@ -126,21 +92,6 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
             Competencia mergeada = entityManager.merge(competencia);
             entityManager.flush();
             return mergeada;
-        }
-    }
-
-    @Override
-    @Transactional
-    public void eliminarLogicamente(Long id) {
-        if (id == null) {
-            return;
-        }
-
-        Competencia competencia = entityManager.find(Competencia.class, id);
-        if (competencia != null) {
-            competencia.setEliminada(true);
-            entityManager.merge(competencia);
-            entityManager.flush();
         }
     }
 

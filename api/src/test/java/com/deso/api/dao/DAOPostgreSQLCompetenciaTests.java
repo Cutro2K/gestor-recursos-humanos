@@ -91,15 +91,12 @@ class DAOPostgreSQLCompetenciaTests {
     }
 
     @Test
-    void eliminarLogicamenteMarcaRegistroComoEliminado() {
-        Competencia c = new Competencia(null, "COMP-DEL", "A Eliminar", null, TipoCompetencia.TECNICA, false);
-        competenciaDAO.guardar(c);
+    void buscarPorIdIgnoraCompetenciasEliminadas() {
+        Competencia eliminada = new Competencia(null, "COMP-DEL", "Eliminada", null, TipoCompetencia.TECNICA, true);
+        competenciaDAO.guardar(eliminada);
         entityManager.clear();
 
-        competenciaDAO.eliminarLogicamente(c.getId());
-        entityManager.clear();
-
-        Optional<Competencia> recuperada = competenciaDAO.buscarPorId(c.getId());
+        Optional<Competencia> recuperada = competenciaDAO.buscarPorId(eliminada.getId());
         assertThat(recuperada).isEmpty();
         assertThat(competenciaDAO.listarActivas(null, "COMP-DEL", null)).isEmpty();
     }
