@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest(showSql = false, properties = {
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
         "logging.file.name=target/competencia-dao-tests.log"
 })
 @Import({CompetenciaPostgreSQLDAO.class, PersistenceExceptionTranslationPostProcessor.class})
