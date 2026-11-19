@@ -255,7 +255,7 @@ export function FactoresPanel() {
                         </td>
                         <td>{factor.nombreCompetencia ?? `Competencia #${factor.competenciaId}`}</td>
                         <td className="tabular-nums">{factor.orden}</td>
-                        <td>{factor.descripcion || "—"}</td>
+                        <td className={styles.summary}>{factor.descripcion || "—"}</td>
                       </tr>
                     );
                   })}
