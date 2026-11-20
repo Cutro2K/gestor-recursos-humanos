@@ -1,6 +1,8 @@
 "use client";
 
 import { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { Variants } from "motion/react";
 import { Button, RadioButton, Spinner, Stack, Surface, TextField } from "react-ui-lib";
 import { PageHeader } from "../ui/page-header";
 import { Icon } from "../ui/icon";
@@ -14,6 +16,40 @@ import styles from "./factores.module.css";
 
 const FILTROS_VACIOS: FiltrosFactores = { nombreCompetencia: "", nombreFactor: "" };
 
+const EASE = [0.4, 0, 0.2, 1] as const;
+
+/**
+ * La barra de selección entra con altura 0 y crece animando height: así el Surface que la
+ * contiene se agranda de a poco y no dispara su animación de layout, que escala y deforma
+ * la tabla. Al abrir, primero crece el contenedor y después aparecen los botones; al
+ * cerrar, al revés.
+ */
+const barraVariants: Variants = {
+  oculta: { height: 0, transition: { duration: 0.2, ease: EASE, when: "afterChildren" } },
+  visible: {
+    height: "auto",
+    transition: { duration: 0.22, ease: EASE, when: "beforeChildren", staggerChildren: 0.06 },
+  },
+};
+
+const accionesVariants: Variants = {
+  oculta: { opacity: 0, y: 6, transition: { duration: 0.12, ease: EASE } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.18, ease: EASE } },
+};
+
+/** Con "reducir movimiento" activado en el sistema, la barra aparece y desaparece sin animar. */
+function sinAnimacion(variants: Variants): Variants {
+  return Object.fromEntries(
+    Object.entries(variants).map(([nombre, variante]) => [
+      nombre,
+      { ...variante, transition: { duration: 0 } },
+    ])
+  ) as Variants;
+}
+
+const barraVariantsReducidas = sinAnimacion(barraVariants);
+const accionesVariantsReducidas = sinAnimacion(accionesVariants);
+
 export function FactoresPanel() {
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [consulta, setConsulta] = useState({ filtros: FILTROS_VACIOS, revision: 0 });
@@ -24,6 +60,7 @@ export function FactoresPanel() {
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState(false);
   const siguientePeticion = useRef<AbortController | null>(null);
+  const reducirMovimiento = useReducedMotion();
 
   const { reportError, feedback, hasRetryError, clearError } = useErrorFeedback({
     retrying: cargando || cargandoMas,
@@ -255,7 +292,7 @@ export function FactoresPanel() {
                         </td>
                         <td>{factor.nombreCompetencia ?? `Competencia #${factor.competenciaId}`}</td>
                         <td className="tabular-nums">{factor.orden}</td>
-                        <td className={styles.summary}>{factor.descripcion || "—"}</td>
+                        <td>{factor.descripcion || "—"}</td>
                       </tr>
                     );
                   })}
@@ -276,41 +313,57 @@ export function FactoresPanel() {
               </div>
             )}
 
-            {factorSeleccionado && (
-              <div
-                className={styles.selectionBar}
-                role="region"
-                aria-label="Acciones sobre el factor seleccionado"
-              >
-                <Stack direction="row" align="center" gap="sm" wrap>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setSelectedId(null)}
+            <AnimatePresence initial={false}>
+              {factorSeleccionado && (
+                <motion.div
+                  key="barra-seleccion"
+                  className={styles.selectionBarClip}
+                  variants={reducirMovimiento ? barraVariantsReducidas : barraVariants}
+                  initial="oculta"
+                  animate="visible"
+                  exit="oculta"
+                >
+                  <div
+                    className={styles.selectionBar}
+                    role="region"
+                    aria-label="Acciones sobre el factor seleccionado"
                   >
-                    Limpiar selección
-                  </Button>
-                </Stack>
+                    <motion.div
+                      variants={reducirMovimiento ? accionesVariantsReducidas : accionesVariants}
+                    >
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setSelectedId(null)}
+                      >
+                        Limpiar selección
+                      </Button>
+                    </motion.div>
 
-                <Stack direction="row" align="center" gap="sm" wrap>
-                  <ModificarFactorModal
-                    factor={factorSeleccionado}
-                    onModificado={() => {
-                      setSelectedId(null);
-                      recargar();
-                    }}
-                  />
-                  <EliminarFactorModal
-                    factores={[factorSeleccionado]}
-                    onEliminado={() => {
-                      setSelectedId(null);
-                      recargar();
-                    }}
-                  />
-                </Stack>
-              </div>
-            )}
+                    <motion.div
+                      className={styles.selectionActions}
+                      variants={reducirMovimiento ? accionesVariantsReducidas : accionesVariants}
+                    >
+                      <ModificarFactorModal
+                        factor={factorSeleccionado}
+                        onModificado={() => {
+                          setSelectedId(null);
+                          recargar();
+                        }}
+                      />
+                      <EliminarFactorModal
+                        factores={[factorSeleccionado]}
+                        onEliminado={() => {
+                          setSelectedId(null);
+                          recargar();
+                        }}
+                      />
+                    </motion.div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         ) : (
           !error && (
