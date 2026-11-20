@@ -63,7 +63,7 @@ public class FactorPostgreSQLDAO implements FactorDAO {
         ) {
         Long count = entityManager.createQuery("""
                 SELECT COUNT(f) FROM Factor f 
-                WHERE f.competencia.id = :competenciaId AND f.orden = :orden
+                WHERE f.competencia.id = :competenciaId AND f.orden = :orden AND f.eliminado = false
                 """, Long.class)
                 .setParameter("competenciaId", competenciaId)
                 .setParameter("orden", orden)
