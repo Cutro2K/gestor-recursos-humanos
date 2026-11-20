@@ -1,0 +1,38 @@
+# Servicios de datos del proyecto: PostgreSQL (negocio) y OpenLDAP (credenciales de consultores).
+#
+#   docker compose up -d      crea y arranca todo (la primera vez carga las seeds)
+#   docker compose down       detiene y elimina los contenedores (los datos de Postgres quedan en su volumen)
+#   docker compose down -v    además borra los datos: el próximo "up" vuelve a cargar las seeds
+#
+# Las credenciales toman los valores por defecto de desarrollo; para cambiarlas, definí las
+# variables en un archivo .env junto a este (está ignorado por git).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: deso_db
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Solo se ejecutan al crear el volumen por primera vez, en orden alfabético.
+      - ./db:/docker-entrypoint-initdb.d:ro
+
+  ldap:
+    # Imagen mantenida (se reconstruye semanalmente): https://github.com/vegardit/docker-openldap
+    image: vegardit/openldap:latest
+    environment:
+      LDAP_INIT_ORG_DN: dc=deso,dc=local
+      LDAP_INIT_ORG_NAME: Capital Humano
+      # Usuario administrador: uid=admin,dc=deso,dc=local. La API lo usa para buscar consultores.
+      LDAP_INIT_ROOT_USER_PW: ${LDAP_PASSWORD:-admin}
+    ports:
+      - "389:389"
+    volumes:
+      # Los .ldif de esta carpeta se cargan una sola vez, al inicializar el directorio.
+      - ./ldap:/opt/ldifs/custom:ro
+
+volumes:
+  postgres-data:

@@ -23,3 +23,10 @@
   transform: rotate(90deg);
   pointer-events: none;
 }
+
+/* CU 01: el usuario se ve siempre en mayúsculas. Hay que apuntar al input: los navegadores
+   no le heredan text-transform. */
+.mayusculas,
+.mayusculas input {
+  text-transform: uppercase;
+}

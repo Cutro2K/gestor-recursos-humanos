@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest(showSql = false, properties = {
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+		// La app usa ddl-auto=none (el esquema sale de db/01-schema.sql); en H2 lo crea Hibernate.
+		"spring.jpa.hibernate.ddl-auto=create-drop",
 		"logging.file.name=target/candidato-dao-tests.log"
 })
 @Import({CandidatoPostgreDAO.class, PersistenceExceptionTranslationPostProcessor.class})

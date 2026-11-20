@@ -2,13 +2,13 @@ import type { TipoDocumento } from "@/service/auth";
 
 /**
  * Validación del formulario de login (CU-01), antes de llamar a la API.
- * Los límites siguen db/01-schema.sql y los DTO de la API:
- * consultor.username VARCHAR(30), candidato.nro_documento VARCHAR(20),
+ * Usuario y contraseña siguen los límites del LDAP definidos en el CU 01 (15 y 20).
+ * Documento y clave siguen db/01-schema.sql: candidato.nro_documento VARCHAR(20),
  * cuestionario.clave_ingreso CHAR(8).
  */
 export const LIMITES = {
-  usuario: 30,
-  contrasena: 128,
+  usuario: 15,
+  contrasena: 20,
   nroDocumento: 20,
   clave: 8,
 } as const;
@@ -22,9 +22,14 @@ export function normalizarDocumento(tipo: TipoDocumento, valor: string) {
   return tipo === "PP" ? limpio.toUpperCase() : limpio.replace(/[.\s]/g, "");
 }
 
+/** CU 01: el identificador de usuario es siempre en mayúsculas. */
+export function normalizarUsuario(valor: string) {
+  return valor.trim().toUpperCase();
+}
+
 export function validarConsultor(usuario: string, contrasena: string): ErroresConsultor {
   const errores: ErroresConsultor = {};
-  const nombre = usuario.trim();
+  const nombre = normalizarUsuario(usuario);
 
   if (!nombre) errores.usuario = "Ingresá tu usuario.";
   else if (nombre.length > LIMITES.usuario)

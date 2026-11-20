@@ -34,11 +34,12 @@ RESTART IDENTITY CASCADE;
 
 -- =============================================================================
 -- 1. CONSULTOR (2 registros: 1 activo para login y 1 inactivo para prueba)
+-- Sin contraseñas: las credenciales de los consultores las validará LDAP.
 -- =============================================================================
-INSERT INTO consultor (username, password, nombre, apellido, email, activo, fecha_creacion)
+INSERT INTO consultor (username, nombre, apellido, email, activo, fecha_creacion)
 VALUES
-    ('ADMIN', 'admin123', 'Carlos', 'Gómez', 'carlos.gomez@capitalhumano.com', TRUE, CURRENT_TIMESTAMP),
-    ('CONSULTOR2', 'pass456', 'Laura', 'Martínez', 'laura.martinez@capitalhumano.com', FALSE, CURRENT_TIMESTAMP);
+    ('ADMIN', 'Carlos', 'Gómez', 'carlos.gomez@capitalhumano.com', TRUE, CURRENT_TIMESTAMP),
+    ('CONSULTOR2', 'Laura', 'Martínez', 'laura.martinez@capitalhumano.com', FALSE, CURRENT_TIMESTAMP);
 
 -- =============================================================================
 -- 2. CANDIDATO (4 registros: 3 activos y 1 dado de baja)

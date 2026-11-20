@@ -1,0 +1,495 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "CU-01: autenticación de consultores y candidatos",
+    "subtitle": "Diseño confirmado. Sesiones y tokens todavía no están implementados.",
+    "locale": "es",
+    "output": "diagramas/06 - Diagramas de Secuencia/cu01-autenticacion.html",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    {
+      "id": "consultor",
+      "type": "external",
+      "label": "Usuario",
+      "sublabel": "consultor o candidato"
+    },
+    {
+      "id": "front",
+      "type": "frontend",
+      "label": "Front",
+      "sublabel": "Next.js en el navegador"
+    },
+    {
+      "id": "proxy",
+      "type": "frontend",
+      "label": "proxy.ts",
+      "sublabel": "servidor Next.js"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API",
+      "sublabel": "Spring Boot + Spring Security"
+    },
+    {
+      "id": "ldap",
+      "type": "security",
+      "label": "OpenLDAP",
+      "sublabel": "credenciales"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "consultor y sesión"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 515,
+      "label": "Login consultor"
+    },
+    {
+      "from": 530,
+      "to": 860,
+      "label": "Login candidato"
+    },
+    {
+      "from": 875,
+      "to": 1060,
+      "label": "Abrir una página"
+    },
+    {
+      "from": 1075,
+      "to": 1165,
+      "label": "Request normal"
+    },
+    {
+      "from": 1180,
+      "to": 1553,
+      "label": "Access vencido: refresco ok"
+    },
+    {
+      "from": 1560,
+      "to": 1735,
+      "label": "Refresco rechazado"
+    },
+    {
+      "from": 1750,
+      "to": 1895,
+      "label": "Logout"
+    }
+  ],
+  "messages": [
+    {
+      "id": "ingresa",
+      "from": "consultor",
+      "to": "front",
+      "y": 170,
+      "label": "usuario y contraseña"
+    },
+    {
+      "id": "login",
+      "from": "front",
+      "to": "api",
+      "y": 200,
+      "label": "POST /api/auth/consultor",
+      "variant": "emphasis"
+    },
+    {
+      "id": "busca",
+      "from": "api",
+      "to": "db",
+      "y": 230,
+      "label": "buscar consultor"
+    },
+    {
+      "id": "activo",
+      "from": "db",
+      "to": "api",
+      "y": 258,
+      "label": "existe y está activo",
+      "variant": "return"
+    },
+    {
+      "id": "bind",
+      "from": "api",
+      "to": "ldap",
+      "y": 288,
+      "label": "buscar uid + bind",
+      "variant": "security",
+      "note": "Rechaza la contraseña vacía antes del bind"
+    },
+    {
+      "id": "bind-ok",
+      "from": "ldap",
+      "to": "api",
+      "y": 343,
+      "label": "credenciales válidas",
+      "variant": "return"
+    },
+    {
+      "id": "crea",
+      "from": "api",
+      "to": "db",
+      "y": 373,
+      "label": "crear fila de sesión",
+      "note": "consultor_id, inicio, expira_en (8 h), seq"
+    },
+    {
+      "id": "creada",
+      "from": "db",
+      "to": "api",
+      "y": 428,
+      "label": "sesionId",
+      "variant": "return"
+    },
+    {
+      "id": "cookies",
+      "from": "api",
+      "to": "front",
+      "y": 458,
+      "label": "200 + cookies HttpOnly",
+      "variant": "return",
+      "note": "Access y refresh JWT firmados con RS256 y claim tipo. Access 10 min; refresh con Path=/api/auth"
+    },
+    {
+      "id": "ingresa-cand",
+      "from": "consultor",
+      "to": "front",
+      "y": 550,
+      "label": "tipo, documento y clave"
+    },
+    {
+      "id": "login-cand",
+      "from": "front",
+      "to": "api",
+      "y": 580,
+      "label": "POST /api/auth/candidato",
+      "variant": "emphasis"
+    },
+    {
+      "id": "busca-cuest",
+      "from": "api",
+      "to": "db",
+      "y": 610,
+      "label": "buscar cuestionario por clave",
+      "note": "Verifica estado activo o en proceso y documento"
+    },
+    {
+      "id": "cuest-ok",
+      "from": "db",
+      "to": "api",
+      "y": 665,
+      "label": "cuestionario válido",
+      "variant": "return"
+    },
+    {
+      "id": "acceso",
+      "from": "api",
+      "to": "db",
+      "y": 695,
+      "label": "UPDATE accesos + 1 si quedan",
+      "variant": "security",
+      "note": "Atómico. Si no quedan: INCOMPLETO y rechazo"
+    },
+    {
+      "id": "acceso-ok",
+      "from": "db",
+      "to": "api",
+      "y": 750,
+      "label": "1 fila afectada",
+      "variant": "return"
+    },
+    {
+      "id": "crea-cand",
+      "from": "api",
+      "to": "db",
+      "y": 780,
+      "label": "crear sesión, reemplaza la anterior",
+      "note": "expira_en: lo antes entre 2 h y el tiempo restante"
+    },
+    {
+      "id": "cookies-cand",
+      "from": "api",
+      "to": "front",
+      "y": 835,
+      "label": "200 + cookies HttpOnly",
+      "variant": "return"
+    },
+    {
+      "id": "pagina",
+      "from": "front",
+      "to": "proxy",
+      "y": 895,
+      "label": "GET /candidatos con cookie de acceso",
+      "variant": "emphasis"
+    },
+    {
+      "id": "jwks",
+      "from": "proxy",
+      "to": "api",
+      "y": 925,
+      "label": "GET /api/auth/jwks.json",
+      "note": "Solo la primera vez; después usa la copia en caché"
+    },
+    {
+      "id": "jwks-ok",
+      "from": "api",
+      "to": "proxy",
+      "y": 980,
+      "label": "clave pública",
+      "variant": "return"
+    },
+    {
+      "id": "pagina-ok",
+      "from": "proxy",
+      "to": "front",
+      "y": 1010,
+      "label": "página o redirect a /login",
+      "variant": "return",
+      "note": "Verifica solo la firma: vencido pasa; sin cookie o firma inválida, /login"
+    },
+    {
+      "id": "pide",
+      "from": "front",
+      "to": "api",
+      "y": 1095,
+      "label": "GET /api/... con cookie de acceso",
+      "variant": "emphasis",
+      "note": "Spring Security: firma, exp y tipo=access, sin base"
+    },
+    {
+      "id": "datos",
+      "from": "api",
+      "to": "front",
+      "y": 1150,
+      "label": "200 con datos",
+      "variant": "return"
+    },
+    {
+      "id": "pide-vencido",
+      "from": "front",
+      "to": "api",
+      "y": 1200,
+      "label": "GET /api/... con access vencido"
+    },
+    {
+      "id": "vencido",
+      "from": "api",
+      "to": "front",
+      "y": 1228,
+      "label": "401",
+      "variant": "return"
+    },
+    {
+      "id": "refresco",
+      "from": "front",
+      "to": "api",
+      "y": 1258,
+      "label": "POST /api/auth/refresco",
+      "variant": "emphasis",
+      "note": "Single-flight: un solo refresco compartido entre requests"
+    },
+    {
+      "id": "lee",
+      "from": "api",
+      "to": "db",
+      "y": 1313,
+      "label": "leer sesión y su titular",
+      "note": "Antes verifica la firma y tipo=refresh"
+    },
+    {
+      "id": "vigente",
+      "from": "db",
+      "to": "api",
+      "y": 1368,
+      "label": "vigente, habilitado y mismo seq",
+      "variant": "return"
+    },
+    {
+      "id": "rota",
+      "from": "api",
+      "to": "db",
+      "y": 1398,
+      "label": "UPDATE seq = seq + 1 WHERE id = ? AND seq = ?",
+      "variant": "security",
+      "note": "Rotación atómica: verifica las filas afectadas"
+    },
+    {
+      "id": "rotada",
+      "from": "db",
+      "to": "api",
+      "y": 1453,
+      "label": "1 fila afectada",
+      "variant": "return"
+    },
+    {
+      "id": "nuevos",
+      "from": "api",
+      "to": "front",
+      "y": 1483,
+      "label": "200 + tokens nuevos",
+      "variant": "return"
+    },
+    {
+      "id": "reintento",
+      "from": "front",
+      "to": "api",
+      "y": 1511,
+      "label": "reintento, una sola vez"
+    },
+    {
+      "id": "reintento-ok",
+      "from": "api",
+      "to": "front",
+      "y": 1541,
+      "label": "200 con datos",
+      "variant": "return"
+    },
+    {
+      "id": "refresco-malo",
+      "from": "front",
+      "to": "api",
+      "y": 1580,
+      "label": "POST /api/auth/refresco",
+      "variant": "emphasis"
+    },
+    {
+      "id": "borra",
+      "from": "api",
+      "to": "db",
+      "y": 1610,
+      "label": "borrar sesión",
+      "variant": "security",
+      "note": "seq viejo, sesión vencida o titular no habilitado"
+    },
+    {
+      "id": "rechazo",
+      "from": "api",
+      "to": "front",
+      "y": 1665,
+      "label": "401",
+      "variant": "return",
+      "note": "Si la sesión no existe, 401 directo"
+    },
+    {
+      "id": "a-login",
+      "from": "front",
+      "to": "consultor",
+      "y": 1720,
+      "label": "redirige a /login",
+      "variant": "return"
+    },
+    {
+      "id": "salir",
+      "from": "consultor",
+      "to": "front",
+      "y": 1770,
+      "label": "cerrar sesión"
+    },
+    {
+      "id": "logout",
+      "from": "front",
+      "to": "api",
+      "y": 1800,
+      "label": "POST /api/auth/logout",
+      "variant": "emphasis"
+    },
+    {
+      "id": "borra-logout",
+      "from": "api",
+      "to": "db",
+      "y": 1830,
+      "label": "borrar sesión"
+    },
+    {
+      "id": "limpia",
+      "from": "api",
+      "to": "front",
+      "y": 1858,
+      "label": "200 + limpia cookies",
+      "variant": "return"
+    },
+    {
+      "id": "fin",
+      "from": "front",
+      "to": "consultor",
+      "y": 1886,
+      "label": "redirige a /login",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "api",
+      "from": 200,
+      "to": 464,
+      "type": "backend"
+    },
+    {
+      "participant": "api",
+      "from": 580,
+      "to": 841,
+      "type": "backend"
+    },
+    {
+      "participant": "api",
+      "from": 1095,
+      "to": 1156,
+      "type": "backend"
+    },
+    {
+      "participant": "api",
+      "from": 1258,
+      "to": 1489,
+      "type": "backend"
+    },
+    {
+      "participant": "api",
+      "from": 1580,
+      "to": 1671,
+      "type": "backend"
+    },
+    {
+      "participant": "api",
+      "from": 1800,
+      "to": 1864,
+      "type": "backend"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Reglas confirmadas",
+      "items": [
+        "Todo rechazo de login usa el mismo mensaje genérico",
+        "La firma prueba autenticidad; la fila de sesión, vigencia",
+        "Spring Security protege la API; proxy.ts solo decide qué pantalla mostrar",
+        "Clave privada solo en la API (PEM fuera del repo); sin rotación por ahora",
+        "Pedidos que cambian datos llevan token CSRF en un encabezado",
+        "Cookie de acceso con SameSite=Lax",
+        "Candidato: la clave se reutiliza hasta el máximo de accesos"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Costos aceptados",
+      "items": [
+        "Hasta 10 min de acceso residual tras un logout o una baja",
+        "Re-login ocasional por la carrera entre pestañas",
+        "Una clave robada sirve hasta agotar los accesos"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Pendiente",
+      "items": [
+        "Estrategia de tests de la sesión"
+      ]
+    }
+  ]
+}

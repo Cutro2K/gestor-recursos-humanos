@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+/** Consultor del sistema. No guarda contraseña: la validará LDAP; username será su uid. */
 public class Consultor {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,9 +28,6 @@ public class Consultor {
 
     @Column(nullable = false, unique = true, length = 30)
     private String username;
-
-    @Column(nullable = false, length = 255)
-    private String password;
 
     @Column(nullable = false, length = 50)
     private String nombre;

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   LIMITES,
   normalizarDocumento,
+  normalizarUsuario,
   sinErrores,
   validarCandidato,
   validarConsultor,
@@ -18,13 +19,20 @@ test("consultor: exige ambos campos y no cuenta los espacios como usuario", () =
   assert.ok(errores.contrasena);
 });
 
-test("consultor: respeta el máximo de consultor.username (30)", () => {
+test("consultor: respeta el máximo de usuario del LDAP (15)", () => {
+  assert.equal(LIMITES.usuario, 15);
   assert.ok(sinErrores(validarConsultor("a".repeat(LIMITES.usuario), "x")));
   assert.ok(validarConsultor("a".repeat(LIMITES.usuario + 1), "x").usuario);
 });
 
-test("consultor: limita el largo de la contraseña", () => {
+test("consultor: limita la contraseña al máximo del LDAP (20)", () => {
+  assert.equal(LIMITES.contrasena, 20);
+  assert.ok(sinErrores(validarConsultor("ADMIN", "x".repeat(LIMITES.contrasena))));
   assert.ok(validarConsultor("ADMIN", "x".repeat(LIMITES.contrasena + 1)).contrasena);
+});
+
+test("normalizarUsuario quita espacios y pasa a mayúsculas", () => {
+  assert.equal(normalizarUsuario(" admin "), "ADMIN");
 });
 
 test("candidato: acepta los documentos de los datos de ejemplo", () => {

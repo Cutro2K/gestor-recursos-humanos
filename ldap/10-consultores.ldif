@@ -1,0 +1,37 @@
+# =============================================================================
+# SEED LDAP - Consultores (CU 01)
+# Se carga una sola vez, al crear el contenedor "ldap" de docker-compose.yml.
+# Cada uid coincide con consultor.username de db/02-data.sql: así se vinculan
+# la contraseña (LDAP) y los datos del consultor (PostgreSQL).
+#
+# Contraseñas de prueba (solo desarrollo):
+#   ADMIN      -> admin123   (activo en la base)
+#   CONSULTOR2 -> pass456    (inactivo en la base: el login debe rechazarlo)
+#
+# userPassword va con hash {SSHA}. Los valores con acentos van en base64 ("::"),
+# como exige el formato LDIF. No usar la secuencia dólar-llave: la imagen la
+# interpreta como variable y corta la inicialización si no está definida.
+# =============================================================================
+
+dn: ou=consultores,dc=deso,dc=local
+objectClass: organizationalUnit
+ou: consultores
+
+dn: uid=ADMIN,ou=consultores,dc=deso,dc=local
+objectClass: inetOrgPerson
+uid: ADMIN
+cn:: Q2FybG9zIEfDs21leg==
+sn:: R8OzbWV6
+givenName: Carlos
+mail: carlos.gomez@capitalhumano.com
+userPassword: {SSHA}Ty6KB8tolnavySOrYEVFHZu6oMD9ytn3xVarNw==
+
+dn: uid=CONSULTOR2,ou=consultores,dc=deso,dc=local
+objectClass: inetOrgPerson
+uid: CONSULTOR2
+cn:: TGF1cmEgTWFydMOtbmV6
+sn:: TWFydMOtbmV6
+givenName: Laura
+mail: laura.martinez@capitalhumano.com
+userPassword: {SSHA}JY2JI3IGCY1y2O1xVn0wKQtGuhsvl8QOMdD5zw==
+
