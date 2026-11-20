@@ -7,8 +7,13 @@ import { Button, Spinner, Stack, Surface, TextField } from "react-ui-lib";
 import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
 import { useErrorFeedback } from "@/components/ui/use-error-feedback";
-import { listarCompetencias } from "@/service/competencias";
-import type { Competencia, FiltrosCompetencias, TipoCompetencia } from "@/service/competencias";
+import { listarCompetencias, obtenerTotalesCompetencias } from "@/service/competencias";
+import type {
+  Competencia,
+  FiltrosCompetencias,
+  TipoCompetencia,
+  TotalesCompetencias,
+} from "@/service/competencias";
 import { AltaCompetenciaModal } from "./alta-competencia-modal";
 import styles from "./competencias.module.css";
 
@@ -49,34 +54,24 @@ export function CompetenciasPanel() {
   const [competencias, setCompetencias] = useState<Competencia[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // Totales fijos del catálogo general (no afectados por filtros de búsqueda)
-  const [totalesCatalogo, setTotalesCatalogo] = useState<{
-    total: number;
-    tecnicas: number;
-    actitudinales: number;
-  }>({ total: 0, tecnicas: 0, actitudinales: 0 });
-  const [cargandoTotales, setCargandoTotales] = useState(true);
+  // Totales fijos del catálogo general (no afectados por filtros de búsqueda). null mientras
+  // cargan o si fallaron: las tarjetas muestran "—" en vez de un 0 que no es real.
+  const [totalesCatalogo, setTotalesCatalogo] = useState<TotalesCompetencias | null>(null);
 
   const { reportError, feedback, hasRetryError, clearError } = useErrorFeedback({
     retrying: cargando,
   });
 
   const cargarTotales = useCallback((signal?: AbortSignal) => {
-    return listarCompetencias({}, signal)
-      .then((todas) => {
+    return obtenerTotalesCompetencias(signal)
+      .then((totales) => {
         if (signal?.aborted) return;
-        setTotalesCatalogo({
-          total: todas.length,
-          tecnicas: todas.filter((c) => c.tipo === "TECNICA").length,
-          actitudinales: todas.filter((c) => c.tipo === "ACTITUDINAL").length,
-        });
+        setTotalesCatalogo(totales);
       })
       .catch(() => {
-        // El error de red/servidor se reporta desde la consulta principal del panel.
-      })
-      .finally(() => {
         if (signal?.aborted) return;
-        setCargandoTotales(false);
+        // El error de red/servidor se reporta desde la consulta principal del panel.
+        setTotalesCatalogo(null);
       });
   }, []);
 
@@ -158,18 +153,18 @@ export function CompetenciasPanel() {
       <div className={styles.summary}>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Total Competencias</span>
-          <span className={styles.summaryNumber}>{cargandoTotales ? "—" : totalesCatalogo.total}</span>
+          <span className={styles.summaryNumber}>{totalesCatalogo?.total ?? "—"}</span>
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Técnicas</span>
           <span className={`${styles.summaryNumber} ${styles.summaryTecnica}`}>
-            {cargandoTotales ? "—" : totalesCatalogo.tecnicas}
+            {totalesCatalogo?.tecnicas ?? "—"}
           </span>
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Actitudinales</span>
           <span className={`${styles.summaryNumber} ${styles.summaryActitudinal}`}>
-            {cargandoTotales ? "—" : totalesCatalogo.actitudinales}
+            {totalesCatalogo?.actitudinales ?? "—"}
           </span>
         </div>
       </div>

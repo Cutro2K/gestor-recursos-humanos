@@ -2,6 +2,7 @@ package com.deso.api.service;
 
 import com.deso.api.dao.CompetenciaDAO;
 import com.deso.api.dto.CompetenciaDTO;
+import com.deso.api.dto.TotalesCompetenciasDTO;
 import com.deso.api.exception.RecursoDuplicadoException;
 import com.deso.api.exception.RecursoNoEncontradoException;
 import com.deso.api.model.entity.Competencia;
@@ -124,6 +125,25 @@ class GestorCompetenciasTests {
                 .hasMessageContaining(eliminada.getId().toString());
     }
 
+    @Test
+    void obtenerTotalesCuentaSoloActivasPorTipo() {
+        dao.guardar(new Competencia(null, "COMP-01", "Gestión", "Desc", TipoCompetencia.TECNICA, false));
+        dao.guardar(new Competencia(null, "COMP-02", "Backend", "Desc", TipoCompetencia.TECNICA, false));
+        dao.guardar(new Competencia(null, "COMP-03", "Lealtad", "Desc", TipoCompetencia.ACTITUDINAL, false));
+        dao.guardar(new Competencia(null, "COMP-04", "Eliminada", "Desc", TipoCompetencia.ACTITUDINAL, true));
+
+        TotalesCompetenciasDTO totales = gestor.obtenerTotales();
+
+        assertThat(totales.total()).isEqualTo(3);
+        assertThat(totales.tecnicas()).isEqualTo(2);
+        assertThat(totales.actitudinales()).isEqualTo(1);
+    }
+
+    @Test
+    void obtenerTotalesDevuelveCerosSiNoHayCompetencias() {
+        assertThat(gestor.obtenerTotales()).isEqualTo(new TotalesCompetenciasDTO(0, 0, 0));
+    }
+
     private static class FakeCompetenciaDAO implements CompetenciaDAO {
         private final Map<Long, Competencia> store = new LinkedHashMap<>();
         private long seq = 1;
@@ -158,6 +178,15 @@ class GestorCompetenciasTests {
         public boolean existePorNombre(String nombre) {
             return store.values().stream()
                     .anyMatch(c -> c.getNombre().equalsIgnoreCase(nombre));
+        }
+
+        @Override
+        public Map<TipoCompetencia, Long> contarActivasPorTipo() {
+            Map<TipoCompetencia, Long> totales = new EnumMap<>(TipoCompetencia.class);
+            store.values().stream()
+                    .filter(c -> !Boolean.TRUE.equals(c.getEliminada()))
+                    .forEach(c -> totales.merge(c.getTipo(), 1L, Long::sum));
+            return totales;
         }
 
         @Override

@@ -1,6 +1,7 @@
 package com.deso.api.controller;
 
 import com.deso.api.dto.CompetenciaDTO;
+import com.deso.api.dto.TotalesCompetenciasDTO;
 import com.deso.api.model.enums.TipoCompetencia;
 import com.deso.api.service.GestorCompetencias;
 import jakarta.validation.Valid;
@@ -39,6 +40,15 @@ public class CompetenciaController {
             @RequestParam(required = false) @Size(max = 20, message = "Máximo 20 caracteres.") String codigo,
             @RequestParam(required = false) TipoCompetencia tipo) {
         return gestorCompetencias.listar(nombre, codigo, tipo);
+    }
+
+    /**
+     * Totales del catálogo de competencias activas (total, técnicas y actitudinales),
+     * independientes de los filtros del listado.
+     */
+    @GetMapping("/totales")
+    public TotalesCompetenciasDTO obtenerTotales() {
+        return gestorCompetencias.obtenerTotales();
     }
 
     /**

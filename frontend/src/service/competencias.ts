@@ -44,6 +44,24 @@ export async function listarCompetencias(
   return resultado ?? [];
 }
 
+export type TotalesCompetencias = {
+  total: number;
+  tecnicas: number;
+  actitudinales: number;
+};
+
+/**
+ * Totales del catálogo de competencias activas, independientes de los filtros del listado.
+ * Los cuenta el backend: no hace falta descargar el catálogo completo.
+ */
+export async function obtenerTotalesCompetencias(signal?: AbortSignal): Promise<TotalesCompetencias> {
+  const resultado = await apiRequest<TotalesCompetencias>("competencias/totales", { signal });
+  if (!resultado) {
+    throw new Error("No se recibieron los totales de competencias.");
+  }
+  return resultado;
+}
+
 /**
  * Obtiene el detalle de una competencia por su ID.
  */

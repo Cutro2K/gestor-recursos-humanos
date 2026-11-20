@@ -2,6 +2,7 @@ package com.deso.api.service;
 
 import com.deso.api.dao.CompetenciaDAO;
 import com.deso.api.dto.CompetenciaDTO;
+import com.deso.api.dto.TotalesCompetenciasDTO;
 import com.deso.api.exception.RecursoDuplicadoException;
 import com.deso.api.exception.RecursoNoEncontradoException;
 import com.deso.api.model.entity.Competencia;
@@ -14,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -78,6 +80,17 @@ public class GestorCompetencias {
                 .stream()
                 .map(this::mapearADTO)
                 .toList();
+    }
+
+    /**
+     * Totales del catálogo de competencias activas, independientes de los filtros del listado.
+     */
+    @Transactional(readOnly = true)
+    public TotalesCompetenciasDTO obtenerTotales() {
+        Map<TipoCompetencia, Long> porTipo = competenciaDAO.contarActivasPorTipo();
+        long tecnicas = porTipo.getOrDefault(TipoCompetencia.TECNICA, 0L);
+        long actitudinales = porTipo.getOrDefault(TipoCompetencia.ACTITUDINAL, 0L);
+        return new TotalesCompetenciasDTO(tecnicas + actitudinales, tecnicas, actitudinales);
     }
 
     /**
