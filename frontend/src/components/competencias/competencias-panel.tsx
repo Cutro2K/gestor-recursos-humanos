@@ -60,13 +60,18 @@ export function CompetenciasPanel() {
   const cargarTotales = useCallback((signal?: AbortSignal) => {
     return listarCompetencias({}, signal)
       .then((todas) => {
+        if (signal?.aborted) return;
         setTotalesCatalogo({
           total: todas.length,
           tecnicas: todas.filter((c) => c.tipo === "TECNICA").length,
           actitudinales: todas.filter((c) => c.tipo === "ACTITUDINAL").length,
         });
       })
+      .catch(() => {
+        // El error de red/servidor se reporta desde la consulta principal del panel.
+      })
       .finally(() => {
+        if (signal?.aborted) return;
         setCargandoTotales(false);
       });
   }, []);
