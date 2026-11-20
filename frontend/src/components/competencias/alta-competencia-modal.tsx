@@ -197,6 +197,7 @@ export function AltaCompetenciaModal({ onCreada }: Props) {
               if (errores.codigo) setErrores((prev) => ({ ...prev, codigo: "" }));
             }}
             disabled={guardando}
+            maxLength={20}
             error={errores.codigo}
             helpText="Identificador único de la competencia (hasta 20 caracteres)."
           />
@@ -210,6 +211,7 @@ export function AltaCompetenciaModal({ onCreada }: Props) {
               if (errores.nombre) setErrores((prev) => ({ ...prev, nombre: "" }));
             }}
             disabled={guardando}
+            maxLength={75}
             error={errores.nombre}
             helpText="Nombre representativo y único de la competencia (hasta 75 caracteres)."
           />
