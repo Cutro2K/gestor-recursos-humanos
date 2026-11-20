@@ -187,8 +187,70 @@ public class GlobalExceptionHandler {
         
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);
     }
-    
-    // 6. Handler general para cualquier error no previsto -> 500 Internal Server Error
+
+    // 6. Credenciales inválidas en autenticación -> 401 Unauthorized
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponseDTO> handleCredencialesInvalidas(CredencialesInvalidasException ex, HttpServletRequest request) {
+        log.warn("Intento de acceso fallido en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorResponseDTO error = new ErrorResponseDTO(
+            HttpStatus.UNAUTHORIZED.value(),
+            "No Autorizado",
+            ex.getMessage(),
+            request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    // 7. Conflicto por recurso duplicado (CU 13 / CU 17 / CU 18) -> 409 Conflict
+    @ExceptionHandler(RecursoDuplicadoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoDuplicado(
+            RecursoDuplicadoException ex, HttpServletRequest request) {
+        log.warn("Conflicto de recurso duplicado en {}: {}", request.getRequestURI(), ex.getMessage());
+
+        Map<String, String> errores = null;
+        if (ex.getCampo() != null && !ex.getCampo().isBlank()) {
+            errores = Map.of(ex.getCampo(), ex.getMessage());
+        }
+
+        ErrorResponseDTO respuesta = new ErrorResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Recurso Duplicado",
+                ex.getMessage(),
+                request.getRequestURI(),
+                errores
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON).body(respuesta);
+    }
+
+    // 8. Recurso no encontrado (CU 13 / CU 17 / CU 18) -> 404 Not Found
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoNoEncontrado(
+            RecursoNoEncontradoException ex, HttpServletRequest request) {
+        log.warn("Recurso no encontrado en {}: {}", request.getRequestURI(), ex.getMessage());
+        return respuestaError(HttpStatus.NOT_FOUND, "Recurso No Encontrado", ex.getMessage(), request);
+    }
+
+    // 9. Recurso actualmente eliminado (baja lógica) -> 404 Not Found
+    @ExceptionHandler(RecursoActualmenteEliminadoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoActualmenteEliminado(
+            RecursoActualmenteEliminadoException ex, HttpServletRequest request) {
+        log.warn("Recurso actualmente eliminado en {}: {}", request.getRequestURI(), ex.getMessage());
+        return respuestaError(HttpStatus.NOT_FOUND, "Recurso actualmente eliminado", ex.getMessage(), request);
+    }
+
+    // 10. Argumentos o parámetros inválidos -> 400 Bad Request
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        log.warn("Petición inválida en {}: {}", request.getRequestURI(), ex.getMessage());
+        return respuestaError(HttpStatus.BAD_REQUEST, "Petición Inválida", ex.getMessage(), request);
+    }
+
+    // 11. Handler general para cualquier error no previsto -> 500 Internal Server Error
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleAllUncaughtExceptions(Exception ex, HttpServletRequest request) {
         log.error("Error inesperado en {}: ", request.getRequestURI(), ex);
@@ -202,55 +264,4 @@ public class GlobalExceptionHandler {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
-    // 7. Credenciales inválidas en autenticación -> 401 Unauthorized
-    @ExceptionHandler(CredencialesInvalidasException.class)
-    public ResponseEntity<ErrorResponseDTO> handleCredencialesInvalidas(CredencialesInvalidasException ex, HttpServletRequest request) {
-        log.warn("Intento de acceso fallido en {}: {}", request.getRequestURI(), ex.getMessage());
-
-        ErrorResponseDTO error = new ErrorResponseDTO(
-            HttpStatus.UNAUTHORIZED.value(),
-            "No Autorizado",
-            ex.getMessage(), // Aquí viajará el mensaje "Contraseña incorrecta" o "Consultor no encontrado"
-            request.getRequestURI()
-        );
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
-    }
-
-    // 8. Recurso no encontrado en base de datos -> 404 Not Found
-    @ExceptionHandler(RecursoNoEncontradoException.class)
-    public ResponseEntity<ErrorResponseDTO> handleRecursoNoEncontrado(
-            RecursoNoEncontradoException ex, HttpServletRequest request) {
-        log.warn("Recurso no encontrado en {}: {}", request.getRequestURI(), ex.getMessage());
-
-        return respuestaError(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage(), request);
-    }
-
-    // 9. Recurso actualmente eliminado (baja lógica) -> 404 Not Found
-    @ExceptionHandler(RecursoActualmenteEliminadoException.class)
-    public ResponseEntity<ErrorResponseDTO> handleRecursoActualmenteEliminado(
-            RecursoActualmenteEliminadoException ex, HttpServletRequest request) {
-        log.warn("Recurso actualmente eliminado en {}: {}", request.getRequestURI(), ex.getMessage());
-
-        return respuestaError(HttpStatus.NOT_FOUND, "Recurso actualmente eliminado", ex.getMessage(), request);
-    }
-
-    // 10. Recurso duplicado (violación de unicidad de negocio) -> 409 Conflict
-    @ExceptionHandler(RecursoDuplicadoException.class)
-    public ResponseEntity<ErrorResponseDTO> handleRecursoDuplicado(
-            RecursoDuplicadoException ex, HttpServletRequest request) {
-        log.warn("Recurso duplicado en {}: {}", request.getRequestURI(), ex.getMessage());
-
-        return respuestaError(HttpStatus.CONFLICT, "Recurso duplicado", ex.getMessage(), request);
-    }
-
-    // 10. Argumento inválido en reglas de negocio -> 400 Bad Request
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
-            IllegalArgumentException ex, HttpServletRequest request) {
-        log.warn("Argumento inválido en {}: {}", request.getRequestURI(), ex.getMessage());
-
-        return respuestaError(HttpStatus.BAD_REQUEST, "Petición inválida", ex.getMessage(), request);
-    }
-
 }

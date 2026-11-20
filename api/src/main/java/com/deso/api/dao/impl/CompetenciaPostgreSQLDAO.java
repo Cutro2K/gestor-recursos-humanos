@@ -29,7 +29,7 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
                   AND (:nombre IS NULL OR lower(c.nombre) LIKE :nombre ESCAPE '!')
                   AND (:codigo IS NULL OR lower(c.codigo) LIKE :codigo ESCAPE '!')
                   AND (:tipo IS NULL OR c.tipo = :tipo)
-                ORDER BY c.id ASC
+                ORDER BY c.codigo ASC, c.nombre ASC
                 """, Competencia.class)
                 .setParameter("nombre", patronDeBusqueda(nombre))
                 .setParameter("codigo", patronDeBusqueda(codigo))
@@ -38,48 +38,15 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
     }
 
     @Override
-    public List<Competencia> buscar(String nombre) {
-        return listarActivas(nombre, null, null);
-    }
-
-    @Override
     public Optional<Competencia> buscarPorId(Long id) {
         if (id == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(entityManager.find(Competencia.class, id));
-    }
-
-    @Override
-    public Optional<Competencia> buscarPorCodigo(String codigo) {
-        if (codigo == null || codigo.isBlank()) {
+        Competencia competencia = entityManager.find(Competencia.class, id);
+        if (competencia == null || Boolean.TRUE.equals(competencia.getEliminada())) {
             return Optional.empty();
         }
-
-        return entityManager.createQuery("""
-                SELECT c FROM Competencia c
-                WHERE lower(c.codigo) = lower(:codigo)
-                """, Competencia.class)
-                .setParameter("codigo", codigo.strip())
-                .getResultList()
-                .stream()
-                .findFirst();
-    }
-
-    @Override
-    public Optional<Competencia> buscarPorNombre(String nombre) {
-        if (nombre == null || nombre.isBlank()) {
-            return Optional.empty();
-        }
-
-        return entityManager.createQuery("""
-                SELECT c FROM Competencia c
-                WHERE lower(c.nombre) = lower(:nombre)
-                """, Competencia.class)
-                .setParameter("nombre", nombre.strip())
-                .getResultList()
-                .stream()
-                .findFirst();
+        return Optional.of(competencia);
     }
 
     @Override
@@ -92,7 +59,7 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
                 SELECT count(c) FROM Competencia c
                 WHERE lower(c.codigo) = lower(:codigo)
                 """, Long.class)
-                .setParameter("codigo", codigo.strip())
+                .setParameter("codigo", codigo.strip().toLowerCase(Locale.ROOT))
                 .getSingleResult();
 
         return count != null && count > 0;
@@ -108,7 +75,7 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
                 SELECT count(c) FROM Competencia c
                 WHERE lower(c.nombre) = lower(:nombre)
                 """, Long.class)
-                .setParameter("nombre", nombre.strip())
+                .setParameter("nombre", nombre.strip().toLowerCase(Locale.ROOT))
                 .getSingleResult();
 
         return count != null && count > 0;
@@ -125,21 +92,6 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
             Competencia mergeada = entityManager.merge(competencia);
             entityManager.flush();
             return mergeada;
-        }
-    }
-
-    @Override
-    @Transactional
-    public void eliminarLogicamente(Long id) {
-        if (id == null) {
-            return;
-        }
-
-        Competencia competencia = entityManager.find(Competencia.class, id);
-        if (competencia != null) {
-            competencia.setEliminada(true);
-            entityManager.merge(competencia);
-            entityManager.flush();
         }
     }
 

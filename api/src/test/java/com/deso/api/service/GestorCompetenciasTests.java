@@ -8,152 +8,166 @@ import com.deso.api.model.entity.Competencia;
 import com.deso.api.model.enums.TipoCompetencia;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 class GestorCompetenciasTests {
 
-    private CompetenciaDAO competenciaDAO;
+    private FakeCompetenciaDAO dao;
     private GestorCompetencias gestor;
 
     @BeforeEach
     void setUp() {
-        competenciaDAO = mock(CompetenciaDAO.class);
-        gestor = new GestorCompetencias(competenciaDAO);
+        dao = new FakeCompetenciaDAO();
+        gestor = new GestorCompetencias(dao);
     }
 
     @Test
-    void darDeAltaRegistraCorrectamenteUnaCompetencia() {
+    void darDeAltaRegistraCorrectamenteUnaCompetenciaYConvierteCodigoAMayusculas() {
         CompetenciaDTO dto = CompetenciaDTO.builder()
-                .codigo("COMP-10")
-                .nombre("Liderazgo")
+                .codigo("comp-10")
+                .nombre("  Liderazgo  ")
                 .tipo(TipoCompetencia.ACTITUDINAL)
-                .descripcion("Capacidad para orientar y motivar al equipo.")
+                .descripcion("  Capacidad para orientar y motivar al equipo.  ")
                 .build();
-
-        when(competenciaDAO.existePorCodigo("COMP-10")).thenReturn(false);
-        when(competenciaDAO.existePorNombre("Liderazgo")).thenReturn(false);
-        when(competenciaDAO.guardar(any(Competencia.class))).thenAnswer(invocation -> {
-            Competencia c = invocation.getArgument(0);
-            c.setId(10L);
-            return c;
-        });
 
         CompetenciaDTO resultado = gestor.darDeAlta(dto);
 
         assertThat(resultado).isNotNull();
-        assertThat(resultado.getId()).isEqualTo(10L);
+        assertThat(resultado.getId()).isNotNull();
         assertThat(resultado.getCodigo()).isEqualTo("COMP-10");
         assertThat(resultado.getNombre()).isEqualTo("Liderazgo");
         assertThat(resultado.getTipo()).isEqualTo(TipoCompetencia.ACTITUDINAL);
+        assertThat(resultado.getDescripcion()).isEqualTo("Capacidad para orientar y motivar al equipo.");
         assertThat(resultado.getEliminada()).isFalse();
 
-        ArgumentCaptor<Competencia> captor = ArgumentCaptor.forClass(Competencia.class);
-        verify(competenciaDAO).guardar(captor.capture());
-        assertThat(captor.getValue().getCodigo()).isEqualTo("COMP-10");
-        assertThat(captor.getValue().getNombre()).isEqualTo("Liderazgo");
+        Competencia persistida = dao.buscarPorId(resultado.getId()).orElse(null);
+        assertThat(persistida).isNotNull();
+        assertThat(persistida.getCodigo()).isEqualTo("COMP-10");
     }
 
     @Test
-    void darDeAltaFallaSiCodigoYaExiste() {
+    void darDeAltaFallaSiCodigoYaExisteYDevuelveCampoEnConflicto() {
+        dao.guardar(new Competencia(null, "COMP-01", "Gestión", null, TipoCompetencia.TECNICA, false));
+
         CompetenciaDTO dto = CompetenciaDTO.builder()
-                .codigo("COMP-01")
+                .codigo("comp-01")
                 .nombre("Gestión de Proyectos 2")
                 .tipo(TipoCompetencia.TECNICA)
                 .build();
 
-        when(competenciaDAO.existePorCodigo("COMP-01")).thenReturn(true);
-
         assertThatThrownBy(() -> gestor.darDeAlta(dto))
                 .isInstanceOf(RecursoDuplicadoException.class)
-                .hasMessageContaining("COMP-01");
-
-        verify(competenciaDAO, never()).guardar(any());
+                .hasMessageContaining("COMP-01")
+                .satisfies(ex -> assertThat(((RecursoDuplicadoException) ex).getCampo()).isEqualTo("codigo"));
     }
 
     @Test
-    void darDeAltaFallaSiNombreYaExiste() {
+    void darDeAltaFallaSiNombreYaExisteYDevuelveCampoEnConflicto() {
+        dao.guardar(new Competencia(null, "COMP-99", "Lealtad", null, TipoCompetencia.ACTITUDINAL, false));
+
         CompetenciaDTO dto = CompetenciaDTO.builder()
-                .codigo("COMP-99")
-                .nombre("Lealtad")
+                .codigo("COMP-100")
+                .nombre("lealtad")
                 .tipo(TipoCompetencia.ACTITUDINAL)
                 .build();
 
-        when(competenciaDAO.existePorCodigo("COMP-99")).thenReturn(false);
-        when(competenciaDAO.existePorNombre("Lealtad")).thenReturn(true);
-
         assertThatThrownBy(() -> gestor.darDeAlta(dto))
                 .isInstanceOf(RecursoDuplicadoException.class)
-                .hasMessageContaining("Lealtad");
-
-        verify(competenciaDAO, never()).guardar(any());
+                .hasMessageContaining("lealtad")
+                .satisfies(ex -> assertThat(((RecursoDuplicadoException) ex).getCampo()).isEqualTo("nombre"));
     }
 
     @Test
-    void darDeAltaFallaConCamposObligatoriosFaltantes() {
-        CompetenciaDTO sinCodigo = CompetenciaDTO.builder()
-                .nombre("Nombre")
-                .tipo(TipoCompetencia.TECNICA)
-                .build();
-
-        assertThatThrownBy(() -> gestor.darDeAlta(sinCodigo))
-                .isInstanceOf(IllegalArgumentException.class);
-
-        CompetenciaDTO sinNombre = CompetenciaDTO.builder()
-                .codigo("COD-01")
-                .tipo(TipoCompetencia.TECNICA)
-                .build();
-
-        assertThatThrownBy(() -> gestor.darDeAlta(sinNombre))
-                .isInstanceOf(IllegalArgumentException.class);
-
-        CompetenciaDTO sinTipo = CompetenciaDTO.builder()
-                .codigo("COD-01")
-                .nombre("Nombre")
-                .build();
-
-        assertThatThrownBy(() -> gestor.darDeAlta(sinTipo))
+    void darDeAltaFallaSiDatosSonNulos() {
+        assertThatThrownBy(() -> gestor.darDeAlta(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void listarMapeaEntidadesADTO() {
-        Competencia c1 = new Competencia(1L, "COMP-01", "Gestión", "Desc", TipoCompetencia.TECNICA, false);
-        Competencia c2 = new Competencia(2L, "COMP-02", "Lealtad", "Desc", TipoCompetencia.ACTITUDINAL, false);
-
-        when(competenciaDAO.listarActivas(null, null, null)).thenReturn(List.of(c1, c2));
+    void listarMapeaEntidadesADTOYFiltra() {
+        dao.guardar(new Competencia(null, "COMP-01", "Gestión", "Desc", TipoCompetencia.TECNICA, false));
+        dao.guardar(new Competencia(null, "COMP-02", "Lealtad", "Desc", TipoCompetencia.ACTITUDINAL, false));
+        dao.guardar(new Competencia(null, "COMP-03", "Eliminada", "Desc", TipoCompetencia.TECNICA, true));
 
         List<CompetenciaDTO> lista = gestor.listar(null, null, null);
-
         assertThat(lista).hasSize(2);
-        assertThat(lista.get(0).getCodigo()).isEqualTo("COMP-01");
-        assertThat(lista.get(1).getCodigo()).isEqualTo("COMP-02");
+        assertThat(lista).extracting(CompetenciaDTO::getCodigo).containsExactly("COMP-01", "COMP-02");
+
+        List<CompetenciaDTO> soloTecnicas = gestor.listar(null, null, TipoCompetencia.TECNICA);
+        assertThat(soloTecnicas).hasSize(1);
+        assertThat(soloTecnicas.get(0).getCodigo()).isEqualTo("COMP-01");
     }
 
     @Test
     void buscarPorIdRetornaDTOCorrespondiente() {
-        Competencia c = new Competencia(1L, "COMP-01", "Gestión", "Desc", TipoCompetencia.TECNICA, false);
-        when(competenciaDAO.buscarPorId(1L)).thenReturn(Optional.of(c));
+        Competencia c = dao.guardar(new Competencia(null, "COMP-01", "Gestión", "Desc", TipoCompetencia.TECNICA, false));
 
-        CompetenciaDTO resultado = gestor.buscarPorId(1L);
-
-        assertThat(resultado.getId()).isEqualTo(1L);
+        CompetenciaDTO resultado = gestor.buscarPorId(c.getId());
+        assertThat(resultado.getId()).isEqualTo(c.getId());
         assertThat(resultado.getNombre()).isEqualTo("Gestión");
     }
 
     @Test
-    void buscarPorIdLanzaExcepcionSiNoExiste() {
-        when(competenciaDAO.buscarPorId(999L)).thenReturn(Optional.empty());
+    void buscarPorIdLanzaExcepcionSiNoExisteOEstaEliminada() {
+        Competencia eliminada = dao.guardar(new Competencia(null, "COMP-X", "Eliminada", "Desc", TipoCompetencia.TECNICA, true));
 
         assertThatThrownBy(() -> gestor.buscarPorId(999L))
                 .isInstanceOf(RecursoNoEncontradoException.class)
                 .hasMessageContaining("999");
+
+        assertThatThrownBy(() -> gestor.buscarPorId(eliminada.getId()))
+                .isInstanceOf(RecursoNoEncontradoException.class)
+                .hasMessageContaining(eliminada.getId().toString());
+    }
+
+    private static class FakeCompetenciaDAO implements CompetenciaDAO {
+        private final Map<Long, Competencia> store = new LinkedHashMap<>();
+        private long seq = 1;
+
+        @Override
+        public List<Competencia> listarActivas(String nombre, String codigo, TipoCompetencia tipo) {
+            return store.values().stream()
+                    .filter(c -> !Boolean.TRUE.equals(c.getEliminada()))
+                    .filter(c -> nombre == null || c.getNombre().toLowerCase(Locale.ROOT).contains(nombre.toLowerCase(Locale.ROOT)))
+                    .filter(c -> codigo == null || c.getCodigo().toLowerCase(Locale.ROOT).contains(codigo.toLowerCase(Locale.ROOT)))
+                    .filter(c -> tipo == null || c.getTipo() == tipo)
+                    .toList();
+        }
+
+        @Override
+        public Optional<Competencia> buscarPorId(Long id) {
+            if (id == null) return Optional.empty();
+            Competencia c = store.get(id);
+            if (c == null || Boolean.TRUE.equals(c.getEliminada())) {
+                return Optional.empty();
+            }
+            return Optional.of(c);
+        }
+
+        @Override
+        public boolean existePorCodigo(String codigo) {
+            return store.values().stream()
+                    .anyMatch(c -> c.getCodigo().equalsIgnoreCase(codigo));
+        }
+
+        @Override
+        public boolean existePorNombre(String nombre) {
+            return store.values().stream()
+                    .anyMatch(c -> c.getNombre().equalsIgnoreCase(nombre));
+        }
+
+        @Override
+        public Competencia guardar(Competencia c) {
+            if (c.getId() == null) {
+                c.setId(seq++);
+            }
+            Competencia copia = new Competencia(c.getId(), c.getCodigo(), c.getNombre(), c.getDescripcion(), c.getTipo(), c.getEliminada());
+            store.put(c.getId(), copia);
+            return copia;
+        }
     }
 }

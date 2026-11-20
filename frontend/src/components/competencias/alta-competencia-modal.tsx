@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, Modal, RadioGroup, Stack, TextField, useToast } from "react-ui-lib";
+import { useErrorFeedback } from "@/components/ui/use-error-feedback";
 import { ApiError } from "@/service/api";
 import { crearCompetencia } from "@/service/competencias";
 import type { TipoCompetencia } from "@/service/competencias";
@@ -52,12 +53,17 @@ export function AltaCompetenciaModal({ onCreada }: Props) {
   const [errores, setErrores] = useState<Record<string, string>>({});
   const toast = useToast();
 
+  const { reportError, feedback, clearError } = useErrorFeedback({
+    retrying: guardando,
+  });
+
   function reiniciarFormulario() {
     setCodigo("");
     setNombre("");
     setTipo("TECNICA");
     setDescripcion("");
     setErrores({});
+    clearError();
   }
 
   function handleOpenChange(nuevoEstado: boolean) {
@@ -102,10 +108,11 @@ export function AltaCompetenciaModal({ onCreada }: Props) {
 
     setGuardando(true);
     setErrores({});
+    clearError();
 
     try {
       const creada = await crearCompetencia({
-        codigo: codigo.trim().toUpperCase(),
+        codigo: codigo.trim(),
         nombre: nombre.trim(),
         tipo,
         descripcion: descripcion.trim() || undefined,
@@ -120,32 +127,23 @@ export function AltaCompetenciaModal({ onCreada }: Props) {
       onCreada();
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 409) {
-          const mensaje = error.message.toLowerCase();
-          if (mensaje.includes("código") || mensaje.includes("codigo")) {
-            setErrores({ codigo: error.message });
-          } else if (mensaje.includes("nombre")) {
-            setErrores({ nombre: error.message });
-          } else {
-            setErrores({ general: error.message });
-          }
-          toast.error("Conflicto de datos", error.message);
-        } else if (error.status === 400) {
-          const detalle = error.details as { erroresValidacion?: Record<string, string> } | undefined;
-          if (detalle?.erroresValidacion) {
-            setErrores(detalle.erroresValidacion);
-          } else {
-            setErrores({ general: error.message });
-          }
-          toast.error("Datos inválidos", error.message);
+        const detalle = error.details as { erroresValidacion?: Record<string, string> } | undefined;
+        if (detalle?.erroresValidacion && Object.keys(detalle.erroresValidacion).length > 0) {
+          setErrores(detalle.erroresValidacion);
+          toast.error(error.status === 409 ? "Conflicto de datos" : "Datos inválidos", error.message);
         } else {
-          setErrores({ general: error.message });
-          toast.error("Error al guardar", error.message);
+          reportError(error, {
+            title: error.status === 409 ? "Conflicto de datos" : "Error al guardar",
+            fallback: error.message,
+            retry: () => void handleGuardar(),
+          });
         }
       } else {
-        const mensaje = error instanceof Error ? error.message : "Ocurrió un error inesperado.";
-        setErrores({ general: mensaje });
-        toast.error("Error", mensaje);
+        reportError(error, {
+          title: "Error inesperado",
+          fallback: error instanceof Error ? error.message : "Ocurrió un error inesperado al registrar la competencia.",
+          retry: () => void handleGuardar(),
+        });
       }
     } finally {
       setGuardando(false);
@@ -180,76 +178,80 @@ export function AltaCompetenciaModal({ onCreada }: Props) {
         </div>
       )}
     >
-      <Stack gap="md" className={styles.formGrid}>
-        {errores.general && (
-          <div className={styles.fieldError} style={{ padding: "8px 12px", background: "#fee2e2", borderRadius: "6px" }}>
-            {errores.general}
-          </div>
-        )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleGuardar();
+        }}
+        noValidate
+      >
+        <Stack gap="md" className={styles.formGrid}>
+          {feedback}
 
-        <TextField
-          label="Código *"
-          placeholder="Ej: COMP-04"
-          value={codigo}
-          onChange={(val) => {
-            setCodigo(val);
-            if (errores.codigo) setErrores((prev) => ({ ...prev, codigo: "" }));
-          }}
-          disabled={guardando}
-          error={errores.codigo}
-          helpText="Identificador único de la competencia (hasta 20 caracteres)."
-        />
-
-        <TextField
-          label="Nombre *"
-          placeholder="Ej: Liderazgo y Conducción de Equipos"
-          value={nombre}
-          onChange={(val) => {
-            setNombre(val);
-            if (errores.nombre) setErrores((prev) => ({ ...prev, nombre: "" }));
-          }}
-          disabled={guardando}
-          error={errores.nombre}
-          helpText="Nombre representativo y único de la competencia (hasta 75 caracteres)."
-        />
-
-        <RadioGroup
-          label="Tipo de competencia *"
-          value={tipo}
-          onValueChange={(val) => {
-            setTipo(val as TipoCompetencia);
-            if (errores.tipo) setErrores((prev) => ({ ...prev, tipo: "" }));
-          }}
-          options={OPCIONES_TIPO}
-          error={errores.tipo}
-          disabled={guardando}
-          orientation="vertical"
-        />
-
-        <div className={styles.textareaField}>
-          <label htmlFor="competencia-descripcion" className={styles.textareaLabel}>
-            Descripción (opcional)
-          </label>
-          <textarea
-            id="competencia-descripcion"
-            className={styles.textarea}
-            placeholder="Detalle o alcance de lo que evalúa esta competencia..."
-            value={descripcion}
-            maxLength={1000}
-            onChange={(e) => {
-              setDescripcion(e.target.value);
-              if (errores.descripcion) setErrores((prev) => ({ ...prev, descripcion: "" }));
+          <TextField
+            label="Código *"
+            placeholder="Ej: COMP-04"
+            value={codigo}
+            onChange={(val) => {
+              setCodigo(val);
+              if (errores.codigo) setErrores((prev) => ({ ...prev, codigo: "" }));
             }}
             disabled={guardando}
+            error={errores.codigo}
+            helpText="Identificador único de la competencia (hasta 20 caracteres)."
           />
-          <div className={styles.charCount}>
-            {descripcion.length} / 1000 caracteres
+
+          <TextField
+            label="Nombre *"
+            placeholder="Ej: Liderazgo y Conducción de Equipos"
+            value={nombre}
+            onChange={(val) => {
+              setNombre(val);
+              if (errores.nombre) setErrores((prev) => ({ ...prev, nombre: "" }));
+            }}
+            disabled={guardando}
+            error={errores.nombre}
+            helpText="Nombre representativo y único de la competencia (hasta 75 caracteres)."
+          />
+
+          <RadioGroup
+            label="Tipo de competencia *"
+            value={tipo}
+            onValueChange={(val) => {
+              setTipo(val as TipoCompetencia);
+              if (errores.tipo) setErrores((prev) => ({ ...prev, tipo: "" }));
+            }}
+            options={OPCIONES_TIPO}
+            error={errores.tipo}
+            disabled={guardando}
+            orientation="vertical"
+          />
+
+          <div className={styles.textareaField}>
+            <label htmlFor="competencia-descripcion" className={styles.textareaLabel}>
+              Descripción (opcional)
+            </label>
+            <textarea
+              id="competencia-descripcion"
+              className={styles.textarea}
+              placeholder="Detalle o alcance de lo que evalúa esta competencia..."
+              value={descripcion}
+              maxLength={1000}
+              onChange={(e) => {
+                setDescripcion(e.target.value);
+                if (errores.descripcion) setErrores((prev) => ({ ...prev, descripcion: "" }));
+              }}
+              disabled={guardando}
+            />
+            <div className={styles.charCount}>
+              {descripcion.length} / 1000 caracteres
+            </div>
+            {errores.descripcion && (
+              <div className={styles.fieldError}>{errores.descripcion}</div>
+            )}
           </div>
-          {errores.descripcion && (
-            <div className={styles.fieldError}>{errores.descripcion}</div>
-          )}
-        </div>
-      </Stack>
+        </Stack>
+      </form>
     </Modal>
   );
 }

@@ -261,7 +261,7 @@
 }
 
 .fieldError {
-  color: #dc2626;
+  color: var(--ui-danger);
   font-size: 0.75rem;
   margin-top: 4px;
 }

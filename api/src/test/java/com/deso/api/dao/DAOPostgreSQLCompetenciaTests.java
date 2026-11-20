@@ -12,11 +12,13 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest(showSql = false, properties = {
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+        // La app usa ddl-auto=none (el esquema sale de db/01-schema.sql); en H2 lo crea Hibernate.
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "logging.file.name=target/competencia-dao-tests.log"
 })
@@ -91,17 +93,13 @@ class DAOPostgreSQLCompetenciaTests {
     }
 
     @Test
-    void eliminarLogicamenteMarcaRegistroComoEliminado() {
-        Competencia c = new Competencia(null, "COMP-DEL", "A Eliminar", null, TipoCompetencia.TECNICA, false);
-        competenciaDAO.guardar(c);
+    void buscarPorIdIgnoraCompetenciasEliminadas() {
+        Competencia eliminada = new Competencia(null, "COMP-DEL", "Eliminada", null, TipoCompetencia.TECNICA, true);
+        competenciaDAO.guardar(eliminada);
         entityManager.clear();
 
-        competenciaDAO.eliminarLogicamente(c.getId());
-        entityManager.clear();
-
-        Competencia recuperada = competenciaDAO.buscarPorId(c.getId()).orElse(null);
-        assertThat(recuperada).isNotNull();
-        assertThat(recuperada.getEliminada()).isTrue();
+        Optional<Competencia> recuperada = competenciaDAO.buscarPorId(eliminada.getId());
+        assertThat(recuperada).isEmpty();
         assertThat(competenciaDAO.listarActivas(null, "COMP-DEL", null)).isEmpty();
     }
 }

@@ -1,15 +1,10 @@
 package com.deso.api.controller;
 
 import com.deso.api.dto.CompetenciaDTO;
-import com.deso.api.dto.ErrorResponseDTO;
-import com.deso.api.exception.RecursoDuplicadoException;
-import com.deso.api.exception.RecursoNoEncontradoException;
 import com.deso.api.model.enums.TipoCompetencia;
 import com.deso.api.service.GestorCompetencias;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -65,41 +60,5 @@ public class CompetenciaController {
         CompetenciaDTO creada = gestorCompetencias.darDeAlta(request);
         URI location = URI.create("/api/competencias/" + creada.getId());
         return ResponseEntity.created(location).body(creada);
-    }
-
-    @ExceptionHandler(RecursoDuplicadoException.class)
-    public ResponseEntity<ErrorResponseDTO> handleRecursoDuplicado(
-            RecursoDuplicadoException ex, HttpServletRequest request) {
-        ErrorResponseDTO error = new ErrorResponseDTO(
-                HttpStatus.CONFLICT.value(),
-                "Recurso Duplicado",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-    }
-
-    @ExceptionHandler(RecursoNoEncontradoException.class)
-    public ResponseEntity<ErrorResponseDTO> handleRecursoNoEncontrado(
-            RecursoNoEncontradoException ex, HttpServletRequest request) {
-        ErrorResponseDTO error = new ErrorResponseDTO(
-                HttpStatus.NOT_FOUND.value(),
-                "Recurso No Encontrado",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
-            IllegalArgumentException ex, HttpServletRequest request) {
-        ErrorResponseDTO error = new ErrorResponseDTO(
-                HttpStatus.BAD_REQUEST.value(),
-                "Petición Inválida",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 }

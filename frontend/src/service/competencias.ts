@@ -1,4 +1,4 @@
-import { apiRequest } from "./api.ts";
+import { apiRequest } from "./api";
 
 export type TipoCompetencia = "TECNICA" | "ACTITUDINAL";
 

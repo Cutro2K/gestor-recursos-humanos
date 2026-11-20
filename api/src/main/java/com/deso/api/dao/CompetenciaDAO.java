@@ -17,24 +17,9 @@ public interface CompetenciaDAO {
     List<Competencia> listarActivas(String nombre, String codigo, TipoCompetencia tipo);
 
     /**
-     * Búsqueda por nombre (compatibilidad con especificación del diagrama de clases).
-     */
-    List<Competencia> buscar(String nombre);
-
-    /**
-     * Busca una competencia por su clave primaria.
+     * Busca una competencia activa por su clave primaria.
      */
     Optional<Competencia> buscarPorId(Long id);
-
-    /**
-     * Busca una competencia por su código único (sin distinguir mayúsculas).
-     */
-    Optional<Competencia> buscarPorCodigo(String codigo);
-
-    /**
-     * Busca una competencia por su nombre único (sin distinguir mayúsculas).
-     */
-    Optional<Competencia> buscarPorNombre(String nombre);
 
     /**
      * Determina si ya existe una competencia con el código especificado.
@@ -50,9 +35,4 @@ public interface CompetenciaDAO {
      * Inserta una nueva competencia o actualiza una existente.
      */
     Competencia guardar(Competencia competencia);
-
-    /**
-     * Realiza la baja lógica marcando el registro como eliminado.
-     */
-    void eliminarLogicamente(Long id);
 }
