@@ -18,6 +18,10 @@ const FILTROS_INICIALES: FiltrosCompetencias = {
   tipo: "",
 };
 
+function tieneFiltros(filtros: FiltrosCompetencias): boolean {
+  return Boolean(filtros.nombre?.trim() || filtros.codigo?.trim() || filtros.tipo);
+}
+
 function SearchIcon() {
   return (
     <svg
@@ -133,7 +137,10 @@ export function CompetenciasPanel() {
     setConsulta((prev) => ({ filtros: nuevosFiltros, revision: prev.revision + 1 }));
   }
 
-  const hayFiltrosActivos = Boolean(filtros.nombre?.trim() || filtros.codigo?.trim() || filtros.tipo);
+  // Lo escrito en el formulario: decide si se muestra "Limpiar" para borrarlo.
+  const hayFiltrosEscritos = tieneFiltros(filtros);
+  // La búsqueda que realmente se ejecutó: decide el mensaje cuando no hay resultados.
+  const hayFiltrosAplicados = tieneFiltros(consulta.filtros);
 
   if (hasRetryError) {
     return feedback;
@@ -218,7 +225,7 @@ export function CompetenciasPanel() {
             <Button type="submit" variant="secondary" leadingIcon={<SearchIcon />}>
               Buscar
             </Button>
-            {hayFiltrosActivos && (
+            {hayFiltrosEscritos && (
               <Button type="button" variant="secondary" onClick={handleLimpiar}>
                 Limpiar
               </Button>
@@ -241,11 +248,11 @@ export function CompetenciasPanel() {
           </div>
           <h3 style={{ fontSize: "1.1rem", fontWeight: 600 }}>No se encontraron competencias</h3>
           <p style={{ color: "var(--ui-muted)", maxWidth: "400px", fontSize: "0.875rem" }}>
-            {hayFiltrosActivos
+            {hayFiltrosAplicados
               ? "No hay competencias activas que coincidan con los criterios de búsqueda aplicados."
               : "Todavía no se dieron de alta competencias en el sistema."}
           </p>
-          {hayFiltrosActivos ? (
+          {hayFiltrosAplicados ? (
             <Button variant="secondary" onClick={handleLimpiar}>
               Limpiar filtros
             </Button>
