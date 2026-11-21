@@ -203,7 +203,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
-    // 7. Conflicto por recurso duplicado (CU 13) -> 409 Conflict
+    // 7. Conflicto por recurso duplicado (CU 13 / CU 17 / CU 18) -> 409 Conflict
     @ExceptionHandler(RecursoDuplicadoException.class)
     public ResponseEntity<ErrorResponseDTO> handleRecursoDuplicado(
             RecursoDuplicadoException ex, HttpServletRequest request) {
@@ -226,7 +226,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON).body(respuesta);
     }
 
-    // 8. Recurso no encontrado (CU 13) -> 404 Not Found
+    // 8. Recurso no encontrado (CU 13 / CU 17 / CU 18) -> 404 Not Found
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<ErrorResponseDTO> handleRecursoNoEncontrado(
             RecursoNoEncontradoException ex, HttpServletRequest request) {
@@ -234,7 +234,15 @@ public class GlobalExceptionHandler {
         return respuestaError(HttpStatus.NOT_FOUND, "Recurso No Encontrado", ex.getMessage(), request);
     }
 
-    // 9. Argumentos o parámetros inválidos -> 400 Bad Request
+    // 9. Recurso actualmente eliminado (baja lógica) -> 404 Not Found
+    @ExceptionHandler(RecursoActualmenteEliminadoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoActualmenteEliminado(
+            RecursoActualmenteEliminadoException ex, HttpServletRequest request) {
+        log.warn("Recurso actualmente eliminado en {}: {}", request.getRequestURI(), ex.getMessage());
+        return respuestaError(HttpStatus.NOT_FOUND, "Recurso actualmente eliminado", ex.getMessage(), request);
+    }
+
+    // 10. Argumentos o parámetros inválidos -> 400 Bad Request
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(
             IllegalArgumentException ex, HttpServletRequest request) {
@@ -242,7 +250,7 @@ public class GlobalExceptionHandler {
         return respuestaError(HttpStatus.BAD_REQUEST, "Petición Inválida", ex.getMessage(), request);
     }
 
-    // 10. Handler general para cualquier error no previsto -> 500 Internal Server Error
+    // 11. Handler general para cualquier error no previsto -> 500 Internal Server Error
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleAllUncaughtExceptions(Exception ex, HttpServletRequest request) {
         log.error("Error inesperado en {}: ", request.getRequestURI(), ex);

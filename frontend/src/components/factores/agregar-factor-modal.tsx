@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent, MouseEvent } from "react";
 import { Button, Modal, Stack, Surface, TextField, useToast } from "react-ui-lib";
-import { COMPETENCIAS_MOCK, crearFactor } from "@/service/factores";
+import { crearFactor, listarCompetenciasDisponibles } from "@/service/factores";
+import type { CompetenciaResumen } from "@/service/factores";
 import styles from "./factores.module.css";
 
 type Errores = {
@@ -30,15 +31,40 @@ function capitalizarPrimero(texto: string): string {
 export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
   const [abierto, setAbierto] = useState(false);
   const [formulario, setFormulario] = useState(FORM_INICIAL);
+  const [competencias, setCompetencias] = useState<CompetenciaResumen[]>([]);
+  const [cargandoCompetencias, setCargandoCompetencias] = useState(false);
   const [errores, setErrores] = useState<Errores>({});
   const [guardando, setGuardando] = useState(false);
   const [factorRecienCreado, setFactorRecienCreado] = useState<string | null>(null);
   const toast = useToast();
 
+  useEffect(() => {
+    if (!abierto) return;
+    const controller = new AbortController();
+
+    void listarCompetenciasDisponibles(controller.signal)
+      .then((lista) => {
+        if (controller.signal.aborted) return;
+        setCompetencias(lista);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        const mensaje =
+          error instanceof Error ? error.message : "No se pudieron cargar las competencias.";
+        toast.error("Error al cargar competencias", mensaje);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCargandoCompetencias(false);
+      });
+
+    return () => controller.abort();
+  }, [abierto, toast]);
+
   function limpiarYcerrar() {
     setFormulario(FORM_INICIAL);
     setErrores({});
     setGuardando(false);
+    setCargandoCompetencias(false);
     setFactorRecienCreado(null);
     setAbierto(false);
   }
@@ -119,7 +145,10 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
       onOpenChange={(open) => {
         if (!guardando) {
           if (!open) limpiarYcerrar();
-          else setAbierto(true);
+          else {
+            setCargandoCompetencias(true);
+            setAbierto(true);
+          }
         }
       }}
       title={factorRecienCreado ? "Factor registrado" : "Dar de alta Factor"}
@@ -189,7 +218,7 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
                 name="competenciaId"
                 className={styles.selectControl}
                 value={formulario.competenciaId}
-                disabled={guardando}
+                disabled={guardando || cargandoCompetencias}
                 aria-invalid={Boolean(errores.competenciaId)}
                 onChange={(e) => {
                   const competenciaId = e.target.value;
@@ -199,8 +228,10 @@ export function AgregarFactorModal({ onCreado }: { onCreado?: () => void }) {
                   }
                 }}
               >
-                <option value="">Seleccionar competencia…</option>
-                {COMPETENCIAS_MOCK.map((comp) => (
+                <option value="">
+                  {cargandoCompetencias ? "Cargando competencias…" : "Seleccionar competencia…"}
+                </option>
+                {competencias.map((comp) => (
                   <option key={comp.id} value={String(comp.id)}>
                     {comp.nombre}
                   </option>
