@@ -127,6 +127,12 @@ CREATE TABLE factor (
     CONSTRAINT chk_factor_orden CHECK (orden > 0)
 );
 
+-- El orden es único entre los factores activos de una competencia. Los dados de baja lógica
+-- no cuentan, así su número de orden se puede reutilizar (CU 17 / CU 18 / CU 19).
+CREATE UNIQUE INDEX uq_factor_competencia_orden_activo
+    ON factor (competencia_id, orden)
+    WHERE eliminado = false;
+
 -- [PBI-3] Opciones de Respuesta, Ítems de Opción, Preguntas y Ponderaciones
 -- =============================================================================
 -- TABLA: OPCION_RESPUESTA
