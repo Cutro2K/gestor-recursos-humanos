@@ -124,7 +124,6 @@ CREATE TABLE factor (
         REFERENCES competencia(id) ON DELETE RESTRICT,
     CONSTRAINT uq_factor_codigo UNIQUE (codigo),
     CONSTRAINT uq_factor_nombre UNIQUE (nombre),
-    CONSTRAINT uq_factor_competencia_orden UNIQUE (competencia_id, orden),
     CONSTRAINT chk_factor_orden CHECK (orden > 0)
 );
 
