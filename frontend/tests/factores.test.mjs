@@ -43,6 +43,7 @@ test("listarFactores envía offset, cantidad y filtros de búsqueda y mapea List
         id: 10,
         codigo: "FAC-01",
         nombreFactor: "Capacidad de análisis",
+        competenciaId: 3,
         nombreCompetencia: "Gestión de proyectos",
         orden: 1,
         descripcion: "Pensamiento lógico y deductivo",
@@ -58,6 +59,7 @@ test("listarFactores envía offset, cantidad y filtros de búsqueda y mapea List
   assert.equal(resultado.factores.length, 1);
   assert.equal(resultado.factores[0].id, 10);
   assert.equal(resultado.factores[0].codigo, "FAC-01");
+  assert.equal(resultado.factores[0].competenciaId, 3);
   assert.equal(resultado.factores[0].nombre, "Capacidad de análisis");
   assert.equal(resultado.factores[0].nombreCompetencia, "Gestión de proyectos");
   assert.equal(resultado.factores[0].orden, 1);

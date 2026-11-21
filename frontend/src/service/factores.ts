@@ -24,6 +24,7 @@ export type ListadoGestorFactoresDTO = {
   id: number;
   codigo: string;
   nombreFactor: string;
+  competenciaId: number;
   nombreCompetencia: string;
   orden: number;
   descripcion?: string | null;
@@ -88,7 +89,7 @@ export async function listarFactores(
   if (Array.isArray(resultado)) {
     const factores: Factor[] = resultado.map((item) => ({
       id: item.id,
-      competenciaId: item.competenciaId ?? 0,
+      competenciaId: item.competenciaId,
       nombreCompetencia: item.nombreCompetencia,
       codigo: item.codigo,
       nombre: item.nombre ?? item.nombreFactor ?? "",
