@@ -8,7 +8,9 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -79,6 +81,19 @@ public class CompetenciaPostgreSQLDAO implements CompetenciaDAO {
                 .getSingleResult();
 
         return count != null && count > 0;
+    }
+
+    @Override
+    public Map<TipoCompetencia, Long> contarActivasPorTipo() {
+        Map<TipoCompetencia, Long> totales = new EnumMap<>(TipoCompetencia.class);
+        entityManager.createQuery("""
+                SELECT c.tipo, count(c) FROM Competencia c
+                WHERE c.eliminada = false
+                GROUP BY c.tipo
+                """, Object[].class)
+                .getResultList()
+                .forEach(fila -> totales.put((TipoCompetencia) fila[0], (Long) fila[1]));
+        return totales;
     }
 
     @Override

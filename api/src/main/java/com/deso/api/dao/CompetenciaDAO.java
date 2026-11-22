@@ -4,6 +4,7 @@ import com.deso.api.model.entity.Competencia;
 import com.deso.api.model.enums.TipoCompetencia;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -30,6 +31,11 @@ public interface CompetenciaDAO {
      * Determina si ya existe una competencia con el nombre especificado.
      */
     boolean existePorNombre(String nombre);
+
+    /**
+     * Cuenta las competencias activas agrupadas por tipo. Los tipos sin competencias no aparecen.
+     */
+    Map<TipoCompetencia, Long> contarActivasPorTipo();
 
     /**
      * Inserta una nueva competencia o actualiza una existente.

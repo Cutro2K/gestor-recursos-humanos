@@ -194,6 +194,22 @@ class CompetenciaControllerTests {
         assertThat(response404.statusCode()).isEqualTo(404);
     }
 
+    @Test
+    void getTotalesCuentaCompetenciasActivasPorTipoSinFiltros() throws Exception {
+        dao.guardar(new Competencia(null, "COMP-01", "Gestión de Proyectos", "Desc", TipoCompetencia.TECNICA, false));
+        dao.guardar(new Competencia(null, "COMP-02", "Ingeniería Backend", "Desc", TipoCompetencia.TECNICA, false));
+        dao.guardar(new Competencia(null, "COMP-03", "Lealtad", "Desc", TipoCompetencia.ACTITUDINAL, false));
+        dao.guardar(new Competencia(null, "COMP-04", "Eliminada", "Desc", TipoCompetencia.ACTITUDINAL, true));
+
+        HttpResponse<String> response = CLIENTE.send(request("/totales").GET().build(), HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode nodo = json.readTree(response.body());
+        assertThat(nodo.path("total").asLong()).isEqualTo(3);
+        assertThat(nodo.path("tecnicas").asLong()).isEqualTo(2);
+        assertThat(nodo.path("actitudinales").asLong()).isEqualTo(1);
+    }
+
     private HttpRequest.Builder request(String sufijo) {
         return HttpRequest.newBuilder(URI.create("http://localhost:" + puerto + "/api/competencias" + sufijo))
                 .timeout(Duration.ofSeconds(10))

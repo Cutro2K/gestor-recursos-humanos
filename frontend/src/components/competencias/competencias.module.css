@@ -16,58 +16,6 @@
   --comp-actitudinal-border: #065f46;
 }
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px;
-  padding: 18px 20px;
-}
-
-.filterField {
-  flex: 1 1 240px;
-  min-width: 200px;
-}
-
-.typeFilterGroup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.typePill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid var(--ui-border);
-  border-radius: 9999px;
-  background: var(--ui-surface);
-  color: var(--ui-muted);
-  font-size: 0.825rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-}
-
-.typePill:hover {
-  background: color-mix(in srgb, var(--ui-accent) 6%, var(--ui-surface));
-  color: var(--ui-text);
-}
-
-.typePill[data-active="true"] {
-  border-color: var(--ui-accent);
-  background: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-surface));
-  color: var(--ui-accent);
-  font-weight: 600;
-}
-
-.filterActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -112,7 +60,15 @@
   border: 1px solid var(--ui-border);
   border-radius: 12px;
   background: var(--ui-surface);
+  transition: opacity 150ms ease;
 }
+
+/* Mientras llega una búsqueda nueva, la tabla anterior queda atenuada en vez de saltar a un spinner. */
+.tableScroll[data-cargando="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 
 .table {
   width: 100%;

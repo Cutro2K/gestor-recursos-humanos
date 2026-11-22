@@ -1,14 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { FormEvent } from "react";
 import Link from "next/link";
-import { Button, Spinner, Stack, Surface, TextField } from "react-ui-lib";
+import { Button, RadioGroup, Spinner, Stack, Surface, TextField } from "react-ui-lib";
+import { CriteriosBusqueda } from "@/components/ui/criterios-busqueda";
+import type { CriterioAplicado } from "@/components/ui/criterios-busqueda";
 import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
 import { useErrorFeedback } from "@/components/ui/use-error-feedback";
-import { listarCompetencias } from "@/service/competencias";
-import type { Competencia, FiltrosCompetencias, TipoCompetencia } from "@/service/competencias";
+import { listarCompetencias, obtenerTotalesCompetencias } from "@/service/competencias";
+import type {
+  Competencia,
+  FiltrosCompetencias,
+  TipoCompetencia,
+  TotalesCompetencias,
+} from "@/service/competencias";
 import { AltaCompetenciaModal } from "./alta-competencia-modal";
 import styles from "./competencias.module.css";
 
@@ -18,26 +24,34 @@ const FILTROS_INICIALES: FiltrosCompetencias = {
   tipo: "",
 };
 
-function SearchIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m21 21-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" />
-    </svg>
-  );
+function tieneFiltros(filtros: FiltrosCompetencias): boolean {
+  return Boolean(filtros.nombre?.trim() || filtros.codigo?.trim() || filtros.tipo);
 }
 
+function normalizar(filtros: FiltrosCompetencias): FiltrosCompetencias {
+  return {
+    nombre: filtros.nombre?.trim() ?? "",
+    codigo: filtros.codigo?.trim() ?? "",
+    tipo: filtros.tipo ?? "",
+  };
+}
+
+const ETIQUETAS_TIPO: Record<TipoCompetencia, string> = {
+  TECNICA: "Técnicas",
+  ACTITUDINAL: "Actitudinales",
+};
+
+type CriterioTexto = "codigo" | "nombre";
+
+const ETIQUETAS_CRITERIO: Record<CriterioTexto, string> = {
+  codigo: "Código",
+  nombre: "Nombre",
+};
+
 export function CompetenciasPanel() {
-  const [filtros, setFiltros] = useState<FiltrosCompetencias>(FILTROS_INICIALES);
+  // Lo que el consultor está escribiendo; se aplica recién con [Buscar], como en el resto
+  // de las pantallas de gestión (ver CU008 y CU020 en el diseño de interfaces).
+  const [borrador, setBorrador] = useState<FiltrosCompetencias>(FILTROS_INICIALES);
   const [consulta, setConsulta] = useState<{ filtros: FiltrosCompetencias; revision: number }>({
     filtros: FILTROS_INICIALES,
     revision: 0,
@@ -45,34 +59,24 @@ export function CompetenciasPanel() {
   const [competencias, setCompetencias] = useState<Competencia[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // Totales fijos del catálogo general (no afectados por filtros de búsqueda)
-  const [totalesCatalogo, setTotalesCatalogo] = useState<{
-    total: number;
-    tecnicas: number;
-    actitudinales: number;
-  }>({ total: 0, tecnicas: 0, actitudinales: 0 });
-  const [cargandoTotales, setCargandoTotales] = useState(true);
+  // Totales fijos del catálogo general (no afectados por filtros de búsqueda). null mientras
+  // cargan o si fallaron: las tarjetas muestran "—" en vez de un 0 que no es real.
+  const [totalesCatalogo, setTotalesCatalogo] = useState<TotalesCompetencias | null>(null);
 
   const { reportError, feedback, hasRetryError, clearError } = useErrorFeedback({
     retrying: cargando,
   });
 
   const cargarTotales = useCallback((signal?: AbortSignal) => {
-    return listarCompetencias({}, signal)
-      .then((todas) => {
+    return obtenerTotalesCompetencias(signal)
+      .then((totales) => {
         if (signal?.aborted) return;
-        setTotalesCatalogo({
-          total: todas.length,
-          tecnicas: todas.filter((c) => c.tipo === "TECNICA").length,
-          actitudinales: todas.filter((c) => c.tipo === "ACTITUDINAL").length,
-        });
+        setTotalesCatalogo(totales);
       })
       .catch(() => {
-        // El error de red/servidor se reporta desde la consulta principal del panel.
-      })
-      .finally(() => {
         if (signal?.aborted) return;
-        setCargandoTotales(false);
+        // El error de red/servidor se reporta desde la consulta principal del panel.
+        setTotalesCatalogo(null);
       });
   }, []);
 
@@ -114,33 +118,56 @@ export function CompetenciasPanel() {
     return () => controller.abort();
   }, [consulta, recargar, clearError, reportError]);
 
-  function handleBuscar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  function aplicar(filtros: FiltrosCompetencias) {
     setCargando(true);
-    setConsulta((prev) => ({ filtros, revision: prev.revision + 1 }));
+    setConsulta((prev) => ({ filtros: normalizar(filtros), revision: prev.revision + 1 }));
   }
 
   function handleLimpiar() {
-    setFiltros(FILTROS_INICIALES);
-    setCargando(true);
-    setConsulta({ filtros: FILTROS_INICIALES, revision: consulta.revision + 1 });
+    setBorrador(FILTROS_INICIALES);
+    aplicar(FILTROS_INICIALES);
   }
 
-  function handleCambiarTipo(tipo: TipoCompetencia | "") {
-    const nuevosFiltros: FiltrosCompetencias = { ...filtros, tipo };
-    setFiltros(nuevosFiltros);
-    setCargando(true);
-    setConsulta((prev) => ({ filtros: nuevosFiltros, revision: prev.revision + 1 }));
+  /** Quita un criterio ya aplicado: se borra del formulario y se vuelve a buscar sin él. */
+  function quitarCriterio(criterio: keyof FiltrosCompetencias) {
+    setBorrador((prev) => ({ ...prev, [criterio]: "" }));
+    aplicar({ ...consulta.filtros, [criterio]: "" });
   }
 
-  const hayFiltrosActivos = Boolean(filtros.nombre?.trim() || filtros.codigo?.trim() || filtros.tipo);
+  // La búsqueda que realmente se ejecutó: decide las fichas y el mensaje sin resultados.
+  const filtrosAplicados = consulta.filtros;
+  const hayFiltrosAplicados = tieneFiltros(filtrosAplicados);
+  const hayFiltrosEscritos = tieneFiltros(borrador);
+
+  const criteriosAplicados: CriterioAplicado[] = [];
+  for (const criterio of ["codigo", "nombre"] as const) {
+    const valor = filtrosAplicados[criterio];
+    if (valor) {
+      criteriosAplicados.push({
+        clave: criterio,
+        etiqueta: ETIQUETAS_CRITERIO[criterio],
+        valor: `“${valor}”`,
+        onQuitar: () => quitarCriterio(criterio),
+      });
+    }
+  }
+  if (filtrosAplicados.tipo) {
+    criteriosAplicados.push({
+      clave: "tipo",
+      etiqueta: "Tipo",
+      valor: ETIQUETAS_TIPO[filtrosAplicados.tipo],
+      onQuitar: () => quitarCriterio("tipo"),
+    });
+  }
 
   if (hasRetryError) {
     return feedback;
   }
 
   return (
-    <Stack gap="lg" className={styles.theme}>
+    // layout={false}: cada búsqueda cambia la altura de la página, y la animación de layout
+    // escalaba los contenedores y deformaba todo su contenido.
+    <Stack gap="lg" className={styles.theme} layout={false}>
       <PageHeader
         eyebrow="Catálogos"
         title="Competencias"
@@ -151,83 +178,76 @@ export function CompetenciasPanel() {
       <div className={styles.summary}>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Total Competencias</span>
-          <span className={styles.summaryNumber}>{cargandoTotales ? "—" : totalesCatalogo.total}</span>
+          <span className={styles.summaryNumber}>{totalesCatalogo?.total ?? "—"}</span>
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Técnicas</span>
           <span className={`${styles.summaryNumber} ${styles.summaryTecnica}`}>
-            {cargandoTotales ? "—" : totalesCatalogo.tecnicas}
+            {totalesCatalogo?.tecnicas ?? "—"}
           </span>
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Actitudinales</span>
           <span className={`${styles.summaryNumber} ${styles.summaryActitudinal}`}>
-            {cargandoTotales ? "—" : totalesCatalogo.actitudinales}
+            {totalesCatalogo?.actitudinales ?? "—"}
           </span>
         </div>
       </div>
 
-      <Surface bordered>
-        <form className={styles.filters} onSubmit={handleBuscar} noValidate aria-label="Filtrar competencias">
-          <div className={styles.filterField}>
+      <CriteriosBusqueda
+        columnas="minmax(0, 1fr) minmax(0, 2fr)"
+        campos={
+          <>
             <TextField
-              label="Buscar por nombre"
-              placeholder="Ej: Liderazgo, Gestión..."
-              value={filtros.nombre ?? ""}
-              onChange={(nombre) => setFiltros({ ...filtros, nombre })}
+              label="Código"
+              name="codigo"
+              uppercase
+              value={borrador.codigo ?? ""}
+              onChange={(codigo) => setBorrador((prev) => ({ ...prev, codigo }))}
+              maxLength={20}
+              placeholder="Ej.: COMP-01"
+              autoComplete="off"
             />
-          </div>
-
-          <div className={styles.filterField}>
             <TextField
-              label="Buscar por código"
-              placeholder="Ej: COMP-01"
-              value={filtros.codigo ?? ""}
-              onChange={(codigo) => setFiltros({ ...filtros, codigo })}
+              label="Nombre"
+              name="nombre"
+              value={borrador.nombre ?? ""}
+              onChange={(nombre) => setBorrador((prev) => ({ ...prev, nombre }))}
+              maxLength={75}
+              placeholder="Contiene…"
+              autoComplete="off"
             />
-          </div>
+          </>
+        }
+        opciones={
+          <RadioGroup
+            label="Tipo"
+            name="tipo"
+            orientation="horizontal"
+            value={borrador.tipo ?? ""}
+            onValueChange={(tipo) =>
+              setBorrador((prev) => ({ ...prev, tipo: tipo as TipoCompetencia | "" }))
+            }
+            options={[
+              { value: "", label: "Todas" },
+              { value: "TECNICA", label: ETIQUETAS_TIPO.TECNICA },
+              { value: "ACTITUDINAL", label: ETIQUETAS_TIPO.ACTITUDINAL },
+            ]}
+          />
+        }
+        onBuscar={() => aplicar(borrador)}
+        onLimpiar={handleLimpiar}
+        puedeLimpiar={hayFiltrosEscritos || hayFiltrosAplicados}
+        aplicados={criteriosAplicados}
+        sinCriterios="Mostrando todo el catálogo"
+        resumen={
+          cargando
+            ? "Buscando…"
+            : `${competencias.length} ${competencias.length === 1 ? "resultado" : "resultados"}`
+        }
+      />
 
-          <div className={styles.typeFilterGroup}>
-            <button
-              type="button"
-              className={styles.typePill}
-              data-active={!filtros.tipo}
-              onClick={() => handleCambiarTipo("")}
-            >
-              Todas
-            </button>
-            <button
-              type="button"
-              className={styles.typePill}
-              data-active={filtros.tipo === "TECNICA"}
-              onClick={() => handleCambiarTipo("TECNICA")}
-            >
-              Técnicas
-            </button>
-            <button
-              type="button"
-              className={styles.typePill}
-              data-active={filtros.tipo === "ACTITUDINAL"}
-              onClick={() => handleCambiarTipo("ACTITUDINAL")}
-            >
-              Actitudinales
-            </button>
-          </div>
-
-          <div className={styles.filterActions}>
-            <Button type="submit" variant="secondary" leadingIcon={<SearchIcon />}>
-              Buscar
-            </Button>
-            {hayFiltrosActivos && (
-              <Button type="button" variant="secondary" onClick={handleLimpiar}>
-                Limpiar
-              </Button>
-            )}
-          </div>
-        </form>
-      </Surface>
-
-      {cargando ? (
+      {cargando && competencias.length === 0 ? (
         <Surface bordered style={{ minHeight: "220px", display: "grid", placeItems: "center" }}>
           <Stack align="center" gap="sm">
             <Spinner size="lg" />
@@ -235,17 +255,17 @@ export function CompetenciasPanel() {
           </Stack>
         </Surface>
       ) : competencias.length === 0 ? (
-        <Surface bordered className={styles.emptyState}>
+        <Surface bordered layout={false} className={styles.emptyState}>
           <div className={styles.emptyIcon}>
             <Icon name="target" width="28" height="28" />
           </div>
           <h3 style={{ fontSize: "1.1rem", fontWeight: 600 }}>No se encontraron competencias</h3>
           <p style={{ color: "var(--ui-muted)", maxWidth: "400px", fontSize: "0.875rem" }}>
-            {hayFiltrosActivos
-              ? "No hay competencias activas que coincidan con los criterios de búsqueda aplicados."
+            {hayFiltrosAplicados
+              ? "No se encontraron resultados para los criterios ingresados."
               : "Todavía no se dieron de alta competencias en el sistema."}
           </p>
-          {hayFiltrosActivos ? (
+          {hayFiltrosAplicados ? (
             <Button variant="secondary" onClick={handleLimpiar}>
               Limpiar filtros
             </Button>
@@ -254,7 +274,7 @@ export function CompetenciasPanel() {
           )}
         </Surface>
       ) : (
-        <div className={styles.tableScroll}>
+        <div className={styles.tableScroll} data-cargando={cargando} aria-busy={cargando}>
           <table className={styles.table}>
             <thead>
               <tr>

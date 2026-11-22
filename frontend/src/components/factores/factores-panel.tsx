@@ -1,9 +1,11 @@
 "use client";
 
-import { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { Variants } from "motion/react";
 import { Button, RadioButton, Spinner, Stack, Surface, TextField } from "react-ui-lib";
+import { CriteriosBusqueda } from "../ui/criterios-busqueda";
+import type { CriterioAplicado } from "../ui/criterios-busqueda";
 import { PageHeader } from "../ui/page-header";
 import { Icon } from "../ui/icon";
 import { useErrorFeedback } from "../ui/use-error-feedback";
@@ -15,6 +17,18 @@ import type { Factor, FiltrosFactores } from "@/service/factores";
 import styles from "./factores.module.css";
 
 const FILTROS_VACIOS: FiltrosFactores = { nombreCompetencia: "", nombreFactor: "" };
+
+const ETIQUETAS_CRITERIO: Record<keyof FiltrosFactores, string> = {
+  nombreFactor: "Factor",
+  nombreCompetencia: "Competencia",
+};
+
+function normalizar(filtros: FiltrosFactores): FiltrosFactores {
+  return {
+    nombreCompetencia: filtros.nombreCompetencia.trim(),
+    nombreFactor: filtros.nombreFactor.trim(),
+  };
+}
 
 const EASE = [0.4, 0, 0.2, 1] as const;
 
@@ -69,6 +83,16 @@ export function FactoresPanel() {
   const hayFiltros = Boolean(
     consulta.filtros.nombreCompetencia.trim() || consulta.filtros.nombreFactor.trim()
   );
+  const hayFiltrosEscritos = Boolean(filtros.nombreCompetencia.trim() || filtros.nombreFactor.trim());
+
+  const criteriosAplicados: CriterioAplicado[] = (["nombreFactor", "nombreCompetencia"] as const)
+    .filter((criterio) => consulta.filtros[criterio])
+    .map((criterio) => ({
+      clave: criterio,
+      etiqueta: ETIQUETAS_CRITERIO[criterio],
+      valor: `“${consulta.filtros[criterio]}”`,
+      onQuitar: () => quitarCriterio(criterio),
+    }));
 
   const factorSeleccionado =
     selectedId !== null
@@ -125,20 +149,22 @@ export function FactoresPanel() {
     setSelectedId((prev) => (prev === id ? null : id));
   }
 
-  function buscar(event: SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function aplicar(nuevos: FiltrosFactores) {
     setCargando(true);
     setError(false);
     setSelectedId(null);
-    setConsulta((anterior) => ({ filtros, revision: anterior.revision + 1 }));
+    setConsulta((anterior) => ({ filtros: normalizar(nuevos), revision: anterior.revision + 1 }));
   }
 
   function limpiar() {
     setFiltros(FILTROS_VACIOS);
-    setCargando(true);
-    setError(false);
-    setSelectedId(null);
-    setConsulta((anterior) => ({ filtros: FILTROS_VACIOS, revision: anterior.revision + 1 }));
+    aplicar(FILTROS_VACIOS);
+  }
+
+  /** Quita un criterio ya aplicado: se borra del formulario y se vuelve a buscar sin él. */
+  function quitarCriterio(criterio: keyof FiltrosFactores) {
+    setFiltros((prev) => ({ ...prev, [criterio]: "" }));
+    aplicar({ ...consulta.filtros, [criterio]: "" });
   }
 
   async function cargarMas() {
@@ -169,66 +195,60 @@ export function FactoresPanel() {
   if (hasRetryError) return feedback;
 
   return (
-    <Stack gap="lg" className={styles.theme}>
+    // layout={false}: cada búsqueda cambia la altura de la página, y la animación de layout
+    // escalaba los contenedores y deformaba todo su contenido.
+    <Stack gap="lg" className={styles.theme} layout={false}>
       <PageHeader
-        title="Gestor de Factores"
+        eyebrow="Catálogos"
+        title="Factores"
         description="Creá, modificá y visualizá los factores disponibles para clasificar preguntas."
+        actions={<AgregarFactorModal onCreado={recargar} />}
       />
 
-      <Surface bordered>
-        <form className={styles.filters} onSubmit={buscar} noValidate aria-label="Buscar factores">
-          <TextField
-            uppercase={true}
-            label="Nombre de factor"
-            name="Factor"
-            value={filtros.nombreFactor}
-            onChange={(nombreFactor) => setFiltros({ ...filtros, nombreFactor })}
-            maxLength={50}
-            placeholder="Buscar por nombre de factor"
-          />
-          <TextField
-            uppercase={true}
-            label="Nombre de competencia"
-            name="Competencia"
-            value={filtros.nombreCompetencia}
-            onChange={(nombreCompetencia) => setFiltros({ ...filtros, nombreCompetencia })}
-            maxLength={75}
-            placeholder="Buscar por nombre de competencia"
-          />
-          <Button type="submit" disabled={cargando} className="mb-2">
-            Buscar
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={cargando}
-            onClick={limpiar}
-            className="mb-2"
-          >
-            Limpiar
-          </Button>
-        </form>
-      </Surface>
+      <CriteriosBusqueda
+        campos={
+          <>
+            <TextField
+              label="Nombre de factor"
+              name="nombreFactor"
+              value={filtros.nombreFactor}
+              onChange={(nombreFactor) => setFiltros((prev) => ({ ...prev, nombreFactor }))}
+              maxLength={50}
+              placeholder="Contiene…"
+              autoComplete="off"
+            />
+            <TextField
+              label="Nombre de competencia"
+              name="nombreCompetencia"
+              value={filtros.nombreCompetencia}
+              onChange={(nombreCompetencia) => setFiltros((prev) => ({ ...prev, nombreCompetencia }))}
+              maxLength={75}
+              placeholder="Contiene…"
+              autoComplete="off"
+            />
+          </>
+        }
+        onBuscar={() => aplicar(filtros)}
+        onLimpiar={limpiar}
+        puedeLimpiar={hayFiltrosEscritos || hayFiltros}
+        aplicados={criteriosAplicados}
+        sinCriterios="Mostrando todos los factores activos"
+        resumen={
+          cargando
+            ? "Buscando…"
+            : error
+              ? ""
+              : `${factores.length} ${factores.length === 1 ? "mostrado" : "mostrados"}`
+        }
+      />
 
-      <Surface bordered padding="none">
-        <Stack direction="row" justify="between" gap="md" wrap className="px-5 py-4">
-          <div>
-            <h2 className="font-semibold">Factores</h2>
-            <p className={styles.muted}>
-              Seleccioná un factor para modificarlo o eliminarlo.
-            </p>
-          </div>
-          <Stack direction="column" align="end" gap="sm" wrap>
-            <AgregarFactorModal onCreado={recargar} />
-            {!cargando && !error && (
-              <span className={styles.muted + " pr-1"} aria-live="polite">
-                {factores.length} {factores.length === 1 ? "mostrado" : "mostrados"}
-              </span>
-            )}
-          </Stack>
-        </Stack>
+      <Surface bordered padding="none" layout={false}>
+        <div className="px-5 py-4">
+          <h2 className="font-semibold">Factores</h2>
+          <p className={styles.muted}>Seleccioná un factor para modificarlo o eliminarlo.</p>
+        </div>
 
-        {cargando ? (
+        {cargando && factores.length === 0 ? (
           <div className={styles.status} role="status">
             <Spinner size="sm" aria-hidden="true" />
             <span>Cargando factores…</span>
@@ -239,6 +259,8 @@ export function FactoresPanel() {
               className={`${styles.tableScroll} mx-4 mb-4`}
               tabIndex={0}
               aria-label="Listado de factores"
+              data-cargando={cargando}
+              aria-busy={cargando}
             >
               <table className={styles.table}>
                 <caption className="sr-only">Factores disponibles.</caption>
@@ -300,7 +322,7 @@ export function FactoresPanel() {
               </table>
             </div>
 
-            {cursor !== null && (
+            {cursor !== null && !cargando && (
               <div className="flex justify-center pb-4">
                 <Button
                   variant="secondary"
@@ -376,7 +398,7 @@ export function FactoresPanel() {
               </h3>
               <p className={`${styles.muted} max-w-lg`}>
                 {hayFiltros
-                  ? "Probá con otros datos o limpiá los filtros para ver todos los factores activos."
+                  ? "No se encontraron resultados para los criterios ingresados."
                   : "Creá tu primer factor desde el botón Agregar factor."}
               </p>
             </div>

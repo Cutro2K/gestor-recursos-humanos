@@ -1,0 +1,139 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+}
+
+.titulo {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* Cada pantalla puede definir la proporción de sus campos con --columnas-busqueda. */
+.campos {
+  display: grid;
+  grid-template-columns: var(--columnas-busqueda, repeat(auto-fit, minmax(180px, 1fr)));
+  gap: 16px;
+  align-items: end;
+}
+
+/* Opciones a la izquierda y [Limpiar] / [Buscar] a la derecha, cerrando el formulario. */
+.pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.opciones {
+  min-width: 0;
+}
+
+.acciones {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.resumen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: 48px;
+  padding: 8px 20px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.fichas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ficha {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 30px;
+  padding: 0 6px 0 12px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 35%, var(--ui-border));
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--ui-accent) 10%, var(--ui-surface));
+  color: var(--ui-text);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.ficha:hover {
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 16%, var(--ui-surface));
+}
+
+.ficha:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.fichaClave {
+  color: var(--ui-muted);
+  font-weight: 500;
+}
+
+.fichaQuitar {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  color: var(--ui-muted);
+  font-size: 1rem;
+  line-height: 1;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.ficha:hover .fichaQuitar {
+  background: color-mix(in srgb, var(--ui-accent) 20%, transparent);
+  color: var(--ui-text);
+}
+
+.apagado,
+.cantidad {
+  color: var(--ui-muted);
+  font-size: 0.8125rem;
+}
+
+.cantidad {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .campos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 440px) {
+  .form {
+    padding: 16px;
+  }
+
+  .acciones {
+    flex: 1;
+  }
+
+  .acciones > * {
+    flex: 1;
+  }
+}

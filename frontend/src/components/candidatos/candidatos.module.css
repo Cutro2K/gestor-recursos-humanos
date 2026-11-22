@@ -147,6 +147,13 @@
   overflow-x: auto;
   border: 1px solid var(--ui-border);
   border-radius: 12px;
+  transition: opacity 150ms ease;
+}
+
+/* Mientras llega una búsqueda nueva, la tabla anterior queda atenuada en vez de saltar a un spinner. */
+.tableScroll[data-cargando="true"] {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .tableScroll:focus-visible,
@@ -279,13 +286,6 @@
   text-align: center;
 }
 
-.filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr 180px auto;
-  gap: 16px;
-  align-items: end;
-}
-
 .footerNote {
   flex: 1;
   align-self: center;
@@ -295,12 +295,10 @@
 }
 
 @media (max-width: 760px) {
-  .filters { grid-template-columns: 1fr 1fr; }
   .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 440px) {
-  .filters { grid-template-columns: 1fr; }
   .table td, .table th { padding: 12px; }
   .dropzone { padding: 24px 12px; }
 }

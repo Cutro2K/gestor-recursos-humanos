@@ -5,7 +5,9 @@ import { afterEach, mock, test } from "node:test";
 register(new URL("./ts-resolver.mjs", import.meta.url));
 
 const { API_BASE_URL, ApiError } = await import("../src/service/api.ts");
-const { crearCompetencia, listarCompetencias } = await import("../src/service/competencias.ts");
+const { crearCompetencia, listarCompetencias, obtenerTotalesCompetencias } = await import(
+  "../src/service/competencias.ts"
+);
 
 afterEach(() => mock.restoreAll());
 
@@ -107,4 +109,15 @@ test("crearCompetencia propaga ApiError con status 409 y erroresValidacion cuand
       return true;
     },
   );
+});
+
+test("obtenerTotalesCompetencias consulta el endpoint de totales sin descargar el catálogo", async () => {
+  mock.method(globalThis, "fetch", async (url) => {
+    assert.equal(url, `${API_BASE_URL}/competencias/totales`);
+    return Response.json({ total: 3, tecnicas: 2, actitudinales: 1 });
+  });
+
+  const totales = await obtenerTotalesCompetencias();
+
+  assert.deepEqual(totales, { total: 3, tecnicas: 2, actitudinales: 1 });
 });
