@@ -176,7 +176,7 @@ cd api
    ```
 
    Además de Next.js, React y Tailwind CSS, el frontend usa `react-ui-lib`
-   (componentes de interfaz, instalada desde `react-ui-lib-0.1.0.tgz`) y
+   (componentes de interfaz, instalada desde `react-ui-lib-0.1.1.tgz`) y
    [`motion`](https://motion.dev) (animaciones; es la continuación de framer-motion
    y se importa desde `motion/react`). `react-ui-lib` también depende de `motion`:
    mantené ambas en la misma versión para que npm instale una sola copia.
@@ -268,7 +268,7 @@ validación real de credenciales la hace el backend.
 
 ### Componentes de interfaz (ReactUILib)
 
-El frontend instala `react-ui-lib` desde `frontend/react-ui-lib-0.1.0.tgz`;
+El frontend instala `react-ui-lib` desde `frontend/react-ui-lib-0.1.1.tgz`;
 `npm install` dentro de `frontend/` también instala sus dependencias. El archivo
 `.tgz` debe acompañar al proyecto para que la instalación funcione en otras máquinas.
 
