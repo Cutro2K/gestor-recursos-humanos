@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
 import { Button, Spinner, Stack, Surface, TextField, useToast } from "react-ui-lib";
+import { CriteriosBusqueda } from "@/components/ui/criterios-busqueda";
+import type { CriterioAplicado } from "@/components/ui/criterios-busqueda";
 import { Icon } from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
 import { useErrorFeedback } from "@/components/ui/use-error-feedback";
@@ -12,6 +13,20 @@ import { ImportarCandidatosModal } from "./importar-candidatos-modal";
 import styles from "./candidatos.module.css";
 
 const FILTROS_VACIOS: FiltrosCandidatos = { apellido: "", nombre: "", nroCandidato: "" };
+
+const ETIQUETAS_CRITERIO: Record<keyof FiltrosCandidatos, string> = {
+  apellido: "Apellido",
+  nombre: "Nombre",
+  nroCandidato: "N.º",
+};
+
+function normalizar(filtros: FiltrosCandidatos): FiltrosCandidatos {
+  return {
+    apellido: filtros.apellido.trim(),
+    nombre: filtros.nombre.trim(),
+    nroCandidato: filtros.nroCandidato.trim(),
+  };
+}
 
 export function CandidatosPanel() {
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
@@ -27,6 +42,16 @@ export function CandidatosPanel() {
   });
   const siguientePeticion = useRef<AbortController | null>(null);
   const hayFiltros = Object.values(consulta.filtros).some((valor) => valor.trim());
+  const hayFiltrosEscritos = Object.values(filtros).some((valor) => valor.trim());
+
+  const criteriosAplicados: CriterioAplicado[] = (["apellido", "nombre", "nroCandidato"] as const)
+    .filter((criterio) => consulta.filtros[criterio])
+    .map((criterio) => ({
+      clave: criterio,
+      etiqueta: ETIQUETAS_CRITERIO[criterio],
+      valor: criterio === "nroCandidato" ? consulta.filtros[criterio] : `“${consulta.filtros[criterio]}”`,
+      onQuitar: () => quitarCriterio(criterio),
+    }));
 
   const recargar = useCallback(() => {
     setCargando(true);
@@ -67,24 +92,30 @@ export function CandidatosPanel() {
     };
   }, [consulta, recargar, reportError, clearError]);
 
-  function buscar(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function aplicar(nuevos: FiltrosCandidatos) {
+    setCargando(true);
+    setError(false);
+    setConsulta((anterior) => ({ filtros: normalizar(nuevos), revision: anterior.revision + 1 }));
+  }
 
+  function buscar() {
     if (filtros.nroCandidato.trim() && !/^[1-9][0-9]*$/.test(filtros.nroCandidato.trim())) {
       toast.error("Revisá el número de candidato", "Ingresá un número de candidato entero y positivo.");
       return;
     }
 
-    setCargando(true);
-    setError(false);
-    setConsulta((anterior) => ({ filtros, revision: anterior.revision + 1 }));
+    aplicar(filtros);
   }
 
   function limpiar() {
     setFiltros(FILTROS_VACIOS);
-    setCargando(true);
-    setError(false);
-    setConsulta((anterior) => ({ filtros: FILTROS_VACIOS, revision: anterior.revision + 1 }));
+    aplicar(FILTROS_VACIOS);
+  }
+
+  /** Quita un criterio ya aplicado: se borra del formulario y se vuelve a buscar sin él. */
+  function quitarCriterio(criterio: keyof FiltrosCandidatos) {
+    setFiltros((prev) => ({ ...prev, [criterio]: "" }));
+    aplicar({ ...consulta.filtros, [criterio]: "" });
   }
 
   async function cargarMas() {
@@ -124,7 +155,9 @@ export function CandidatosPanel() {
   if (hasRetryError) return feedback;
 
   return (
-    <Stack gap="lg" className={styles.theme}>
+    // layout={false}: cada búsqueda cambia la altura de la página, y la animación de layout
+    // escalaba los contenedores y deformaba todo su contenido.
+    <Stack gap="lg" className={styles.theme} layout={false}>
       <PageHeader
         eyebrow="Personas"
         title="Candidatos"
@@ -132,54 +165,72 @@ export function CandidatosPanel() {
         actions={<ImportarCandidatosModal onImportado={recargar} />}
       />
 
-      <Surface bordered>
-        <form className={styles.filters} onSubmit={buscar} noValidate aria-label="Buscar candidatos">
-          <TextField
-            label="Apellido"
-            value={filtros.apellido}
-            onChange={(apellido) => setFiltros({ ...filtros, apellido })}
-            maxLength={50}
-            placeholder="Buscar por apellido"
-          />
-          <TextField
-            label="Nombre"
-            value={filtros.nombre}
-            onChange={(nombre) => setFiltros({ ...filtros, nombre })}
-            maxLength={50}
-            placeholder="Buscar por nombre"
-          />
-          <TextField
-            label="N.º de candidato"
-            value={filtros.nroCandidato}
-            onChange={(nroCandidato) => setFiltros({ ...filtros, nroCandidato })}
-            inputMode="numeric"
-            maxLength={19}
-            placeholder="Ej. 101"
-          />
-          <Stack direction="row" gap="sm" wrap>
-            <Button type="submit" disabled={cargando}>Buscar</Button>
-            <Button type="button" variant="secondary" disabled={cargando} onClick={limpiar}>Limpiar</Button>
-          </Stack>
-        </form>
-      </Surface>
+      <CriteriosBusqueda
+        columnas="minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr)"
+        campos={
+          <>
+            <TextField
+              label="Apellido"
+              name="apellido"
+              value={filtros.apellido}
+              onChange={(apellido) => setFiltros((prev) => ({ ...prev, apellido }))}
+              maxLength={50}
+              placeholder="Contiene…"
+              autoComplete="off"
+            />
+            <TextField
+              label="Nombre"
+              name="nombre"
+              value={filtros.nombre}
+              onChange={(nombre) => setFiltros((prev) => ({ ...prev, nombre }))}
+              maxLength={50}
+              placeholder="Contiene…"
+              autoComplete="off"
+            />
+            <TextField
+              label="N.º de candidato"
+              name="nroCandidato"
+              value={filtros.nroCandidato}
+              onChange={(nroCandidato) => setFiltros((prev) => ({ ...prev, nroCandidato }))}
+              inputMode="numeric"
+              maxLength={19}
+              placeholder="Ej.: 101"
+              autoComplete="off"
+            />
+          </>
+        }
+        onBuscar={buscar}
+        onLimpiar={limpiar}
+        puedeLimpiar={hayFiltrosEscritos || hayFiltros}
+        aplicados={criteriosAplicados}
+        sinCriterios="Mostrando todos los candidatos activos"
+        resumen={
+          cargando
+            ? "Buscando…"
+            : error
+              ? ""
+              : `${candidatos.length} ${candidatos.length === 1 ? "mostrado" : "mostrados"}`
+        }
+      />
 
-      <Surface bordered padding="none">
-        <Stack direction="row" justify="between" align="center" gap="md" wrap className="px-5 py-4">
-          <div>
-            <h2 className="font-semibold">Candidatos activos</h2>
-            <p className={styles.muted}>Los candidatos dados de baja no aparecen en este listado.</p>
-          </div>
-          {!cargando && !error && (
-            <span className={styles.muted} aria-live="polite">{candidatos.length} mostrados</span>
-          )}
-        </Stack>
+      <Surface bordered padding="none" layout={false}>
+        <div className="px-5 py-4">
+          <h2 className="font-semibold">Candidatos activos</h2>
+          <p className={styles.muted}>Los candidatos dados de baja no aparecen en este listado.</p>
+        </div>
 
-        {cargando ? (
+        {cargando && candidatos.length === 0 ? (
           <div className={styles.status} role="status">
             <Spinner size="sm" aria-hidden="true" /><span>Cargando candidatos…</span>
           </div>
         ) : candidatos.length ? (
-          <div className={`${styles.tableScroll} mx-4 mb-4`} tabIndex={0} aria-label="Listado de candidatos activos">
+          <div
+            className={`${styles.tableScroll} mx-4 mb-4`}
+            tabIndex={0}
+            aria-label="Listado de candidatos activos"
+            data-cargando={cargando}
+            aria-busy={cargando}
+          >
             <table className={styles.table}>
               <caption className="sr-only">Candidatos disponibles para una evaluación.</caption>
               <thead><tr>
@@ -205,7 +256,7 @@ export function CandidatosPanel() {
             <h3 className="text-lg font-semibold">{hayFiltros ? "Sin coincidencias" : "Todavía no hay candidatos"}</h3>
             <p className={`${styles.muted} max-w-lg`}>
               {hayFiltros
-                ? "Probá con otros datos o limpiá los filtros para ver todos los candidatos activos."
+                ? "No se encontraron resultados para los criterios ingresados."
                 : "Importá tu primer archivo CSV desde el botón Importar candidatos. Vas a poder revisar cada fila antes de confirmar."}
             </p>
           </div>
