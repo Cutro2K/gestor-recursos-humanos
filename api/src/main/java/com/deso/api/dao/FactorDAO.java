@@ -20,5 +20,5 @@ public interface FactorDAO {
 
     Factor guardar(Factor factor);
 
-    void elminarLogicamente(Long id);
+    void eliminarLogicamente(Long id);
 }

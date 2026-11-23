@@ -100,7 +100,7 @@ public class FactorPostgreSQLDAO implements FactorDAO {
 
     @Override
     @Transactional 
-    public void elminarLogicamente(Long id) {
+    public void eliminarLogicamente(Long id) {
         Factor factor = entityManager.find(Factor.class, id);
         if (factor != null) {
             factor.setEliminado(true);

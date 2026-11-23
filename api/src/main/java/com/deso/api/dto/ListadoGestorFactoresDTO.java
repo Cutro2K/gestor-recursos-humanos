@@ -16,6 +16,7 @@ public class ListadoGestorFactoresDTO {
     private Long id;
     private String codigo;
     private String nombreFactor;
+    private Long competenciaId;
     private String nombreCompetencia;
     private Integer orden;
     private String descripcion;

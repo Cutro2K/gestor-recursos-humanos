@@ -74,7 +74,7 @@ public class GestorFactores {
         if (Boolean.TRUE.equals(factor.getEliminado())) {
             throw new RecursoActualmenteEliminadoException("El factor ya se encuentra eliminado.");
         }
-        factorDAO.elminarLogicamente(id);
+        factorDAO.eliminarLogicamente(id);
     }
 
     @Transactional 
@@ -182,6 +182,7 @@ public class GestorFactores {
                 factor.getId(),
                 factor.getCodigo(),
                 factor.getNombre(),
+                factor.getCompetencia().getId(),
                 factor.getCompetencia().getNombre(),
                 factor.getOrden(),
                 factor.getDescripcion()
