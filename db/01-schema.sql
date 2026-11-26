@@ -206,47 +206,23 @@ CREATE TABLE pregunta_item_opcion (
     CONSTRAINT chk_pregunta_item_opcion_ponderacion CHECK (ponderacion >= 0)
 );
 
--- [PBI-4] Configuración, Evaluaciones, Cuestionarios, Respuestas y Auditoría
--- =============================================================================
--- TABLA: CONFIGURACION_CUESTIONARIO
--- Almacena los parámetros globales vigentes para los cuestionarios (instrucciones,
--- tiempos máximos de resolución/inactividad, límite de accesos y preguntas por bloque).
--- =============================================================================
-CREATE TABLE configuracion_cuestionario (
-    id BIGSERIAL PRIMARY KEY,
-    vigencia_desde TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    vigencia_hasta TIMESTAMP WITHOUT TIME ZONE,
-    instrucciones TEXT NOT NULL,
-    cantidad_maxima_accesos INTEGER NOT NULL,
-    minutos_maximos_activo INTEGER NOT NULL,
-    minutos_maximos_resolucion INTEGER NOT NULL,
-    preguntas_por_bloque INTEGER NOT NULL,
-    activa BOOLEAN NOT NULL DEFAULT TRUE,
-    CONSTRAINT chk_config_accesos CHECK (cantidad_maxima_accesos > 0),
-    CONSTRAINT chk_config_min_activo CHECK (minutos_maximos_activo > 0),
-    CONSTRAINT chk_config_min_resolucion CHECK (minutos_maximos_resolucion > 0),
-    CONSTRAINT chk_config_preguntas_bloque CHECK (preguntas_por_bloque > 0)
-);
-
+-- [PBI-4] Evaluaciones, Cuestionarios, Respuestas y Auditoría
 -- =============================================================================
 -- TABLA: EVALUACION
 -- Representa un proceso de evaluación iniciado por un consultor (CU 25) para cubrir
--- un puesto específico, vinculando la configuración vigente y el lote de candidatos.
+-- un puesto específico, agrupando el modelo congelado y el lote de candidatos.
 -- =============================================================================
 CREATE TABLE evaluacion (
     id BIGSERIAL PRIMARY KEY,
     consultor_id BIGINT NOT NULL,
     puesto_id BIGINT NOT NULL,
-    configuracion_id BIGINT NOT NULL,
     fecha_creacion TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version_modelo VARCHAR(30) NOT NULL,
     nombre_archivo_excel VARCHAR(255),
     CONSTRAINT fk_evaluacion_consultor FOREIGN KEY (consultor_id)
         REFERENCES consultor(id) ON DELETE RESTRICT,
     CONSTRAINT fk_evaluacion_puesto FOREIGN KEY (puesto_id)
-        REFERENCES puesto(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_evaluacion_configuracion FOREIGN KEY (configuracion_id)
-        REFERENCES configuracion_cuestionario(id) ON DELETE RESTRICT
+        REFERENCES puesto(id) ON DELETE RESTRICT
 );
 
 -- =============================================================================
@@ -368,7 +344,12 @@ CREATE TABLE cuestionario (
     CONSTRAINT fk_cuestionario_candidato FOREIGN KEY (candidato_id)
         REFERENCES candidato(id) ON DELETE RESTRICT,
     CONSTRAINT chk_cuestionario_estado 
-        CHECK (estado IN ('ACTIVO', 'EN_PROCESO', 'COMPLETO', 'INCOMPLETO', 'SIN_CONTESTAR'))
+        CHECK (estado IN ('ACTIVO', 'EN_PROCESO', 'COMPLETO', 'INCOMPLETO', 'SIN_CONTESTAR')),
+    CONSTRAINT chk_cuestionario_accesos CHECK (cantidad_accesos >= 0),
+    CONSTRAINT chk_cuestionario_max_accesos CHECK (cantidad_maxima_accesos > 0),
+    CONSTRAINT chk_cuestionario_min_activo CHECK (minutos_maximos_activo > 0),
+    CONSTRAINT chk_cuestionario_min_resolucion CHECK (minutos_maximos_resolucion > 0),
+    CONSTRAINT chk_cuestionario_preguntas_bloque CHECK (preguntas_por_bloque > 0)
 );
 
 -- =============================================================================
