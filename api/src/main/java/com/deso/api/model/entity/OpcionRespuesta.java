@@ -20,10 +20,10 @@ public class OpcionRespuesta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String nombre;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String descripcion;
 
     @Column(nullable = false)
@@ -32,5 +32,6 @@ public class OpcionRespuesta {
     // Relación One-to-Many: Una opción de respuesta se compone de varios ítems 
     // cascade = CascadeType.ALL permite que al guardar la OpcionRespuesta se guarden automáticamente sus ítems
     @OneToMany(mappedBy = "opcionRespuesta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("orden ASC")
     private List<ItemOpcion> items = new ArrayList<>();
 }

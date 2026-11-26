@@ -141,11 +141,15 @@ CREATE UNIQUE INDEX uq_factor_competencia_orden_activo
 CREATE TABLE opcion_respuesta (
     id BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
-    descripcion TEXT,
-    eliminada BOOLEAN NOT NULL DEFAULT FALSE,
-
-    CONSTRAINT uq_opcion_respuesta_nombre UNIQUE (nombre)
+    descripcion TEXT NOT NULL,
+    eliminada BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+-- El nombre es único (sin distinguir mayúsculas/minúsculas) solo entre las opciones de respuesta activas.
+-- Las dadas de baja lógica no cuentan, permitiendo reutilizar nombres históricos (CU 29 / CU 31).
+CREATE UNIQUE INDEX uq_opcion_respuesta_nombre_activa
+    ON opcion_respuesta (LOWER(nombre))
+    WHERE eliminada = false;
 
 -- =============================================================================
 -- TABLA: ITEM_OPCION
@@ -160,8 +164,8 @@ CREATE TABLE item_opcion (
 
     CONSTRAINT fk_item_opcion_opcion_respuesta FOREIGN KEY (opcion_respuesta_id)
         REFERENCES opcion_respuesta(id) ON DELETE RESTRICT,
-    CONSTRAINT uq_item_opcion_orden UNIQUE (opcion_respuesta_id, orden),
-    CONSTRAINT uq_item_opcion_descripcion UNIQUE (opcion_respuesta_id, descripcion),
+    CONSTRAINT uq_item_opcion_orden UNIQUE (opcion_respuesta_id, orden) DEFERRABLE INITIALLY DEFERRED,
+    CONSTRAINT uq_item_opcion_descripcion UNIQUE (opcion_respuesta_id, descripcion) DEFERRABLE INITIALLY DEFERRED,
     CONSTRAINT chk_item_opcion_orden CHECK (orden > 0)
 );
 
