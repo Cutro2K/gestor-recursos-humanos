@@ -226,6 +226,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON).body(respuesta);
     }
 
+    // 7b. Conflicto por recurso en uso en base de datos (CU 31) -> 409 Conflict
+    @ExceptionHandler(RecursoEnUsoException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRecursoEnUso(
+            RecursoEnUsoException ex, HttpServletRequest request) {
+        log.warn("Conflicto de recurso en uso en {}: {}", request.getRequestURI(), ex.getMessage());
+        return respuestaError(HttpStatus.CONFLICT, "Recurso en Uso", ex.getMessage(), request);
+    }
+
     // 8. Recurso no encontrado (CU 13 / CU 17 / CU 18) -> 404 Not Found
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<ErrorResponseDTO> handleRecursoNoEncontrado(
