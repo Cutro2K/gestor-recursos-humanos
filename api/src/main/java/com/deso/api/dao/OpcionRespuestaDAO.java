@@ -9,6 +9,8 @@ public interface OpcionRespuestaDAO {
 
     Optional<OpcionRespuesta> buscarPorId(Long id);
 
+    boolean existeActivaPorNombre(String nombre);
+
     List<OpcionRespuesta> buscarActivasPorNombre(String nombre, Integer offset, Integer cantidad);
 
     OpcionRespuesta guardar(OpcionRespuesta opcionRespuesta);

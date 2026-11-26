@@ -137,6 +137,76 @@
   background: color-mix(in srgb, var(--ui-accent) 4%, var(--ui-surface));
 }
 
+.formAlert {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ui-danger, #b32931) 40%, var(--ui-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ui-danger, #b32931) 8%, var(--ui-surface));
+  color: var(--ui-danger, #b32931);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.fieldError {
+  margin: 0;
+  color: var(--ui-danger, #b32931);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.itemsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ui-muted) 3%, var(--ui-surface));
+}
+
+.itemsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.itemOrderCol,
+.itemDescCol {
+  min-width: 0;
+}
+
+.itemRemoveCol {
+  padding-top: 8px;
+}
+
+@media (max-width: 560px) {
+  .itemRow {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .itemRemoveCol {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0;
+  }
+}
+
 @media (max-width: 440px) {
   .table td,
   .table th {

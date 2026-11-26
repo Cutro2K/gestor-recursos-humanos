@@ -38,6 +38,21 @@ public class OpcionRespuestaPostgreSQLDAO implements OpcionRespuestaDAO {
     }
 
     @Override
+    public boolean existeActivaPorNombre(String nombre) {
+        if (nombre == null || nombre.isBlank()) {
+            return false;
+        }
+        Long count = entityManager.createQuery("""
+                SELECT COUNT(o) FROM OpcionRespuesta o
+                WHERE lower(o.nombre) = lower(:nombre)
+                AND o.eliminada = false
+                """, Long.class)
+                .setParameter("nombre", nombre.strip())
+                .getSingleResult();
+        return count > 0;
+    }
+
+    @Override
     public List<OpcionRespuesta> buscarActivasPorNombre(String nombre, Integer offset, Integer cantidad) {
         String patronNombre = patronDeBusqueda(nombre);
         int primerResultado = (offset != null && offset >= 0) ? offset : 0;

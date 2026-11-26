@@ -10,6 +10,7 @@ import { PageHeader } from "../ui/page-header";
 import { Icon } from "../ui/icon";
 import { useErrorFeedback } from "../ui/use-error-feedback";
 import { AccionEnDesarrolloModal } from "./accion-en-desarrollo-modal";
+import { AltaOpcionRespuestaModal } from "./alta-opcion-respuesta-modal";
 import { listarOpcionesRespuesta } from "@/service/opciones-respuesta";
 import type {
   FiltrosOpcionesRespuesta,
@@ -181,6 +182,7 @@ export function OpcionesRespuestaPanel() {
         eyebrow="Catálogos"
         title="Opciones de respuesta"
         description="Consultá y administrá las opciones de respuesta reutilizables que estructuran las posibles respuestas de las preguntas."
+        actions={<AltaOpcionRespuestaModal onCreada={recargar} />}
       />
 
       <CriteriosBusqueda
@@ -364,10 +366,12 @@ export function OpcionesRespuestaPanel() {
                   ? "No se encontraron resultados para los criterios ingresados."
                   : "Aún no se registraron opciones de respuesta activas en el catálogo."}
               </p>
-              {hayFiltros && (
+              {hayFiltros ? (
                 <Button type="button" variant="secondary" onClick={limpiar}>
                   Limpiar filtros
                 </Button>
+              ) : (
+                <AltaOpcionRespuestaModal onCreada={recargar} />
               )}
             </div>
           )

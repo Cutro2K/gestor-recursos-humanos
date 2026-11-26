@@ -29,6 +29,15 @@ export type ListadoOpcionesRespuesta = {
   siguienteCursor: number | null;
 };
 
+export type CrearOpcionRespuestaPayload = {
+  nombre: string;
+  descripcion: string;
+  items: Array<{
+    orden: number;
+    descripcion: string;
+  }>;
+};
+
 const CANTIDAD_POR_PAGINA = 50;
 
 /**
@@ -85,6 +94,25 @@ export async function obtenerOpcionRespuestaPorId(
   );
   if (!resultado) {
     throw new Error(`No se encontró la opción de respuesta #${id}.`);
+  }
+  return resultado;
+}
+
+/**
+ * Da de alta una nueva opción de respuesta con su lista de ítems de opción.
+ * Endpoint: POST /api/opciones-respuesta (CU 29)
+ */
+export async function crearOpcionRespuesta(
+  datos: CrearOpcionRespuestaPayload,
+  signal?: AbortSignal,
+): Promise<OpcionRespuestaDetalle> {
+  const resultado = await apiRequest<OpcionRespuestaDetalle>("opciones-respuesta", {
+    method: "POST",
+    json: datos,
+    signal,
+  });
+  if (!resultado) {
+    throw new Error("No se pudo registrar la opción de respuesta.");
   }
   return resultado;
 }

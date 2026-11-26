@@ -161,6 +161,23 @@ class DAOPostgreSQLOpcionRespuestaTests {
                 .containsExactly("OPCION_05");
     }
 
+    @Test
+    void existeActivaPorNombreIgnoraMayusculasEspaciosYExcluyeEliminadas() {
+        opcionRespuestaDAO.guardar(opcion("VERDADERO_FALSO", "Activa", false,
+                item(1, "Verdadero"), item(2, "Falso")));
+        opcionRespuestaDAO.guardar(opcion("ESCALA_HISTORICA", "Dada de baja", true,
+                item(1, "Uno"), item(2, "Dos")));
+        limpiar();
+
+        assertThat(opcionRespuestaDAO.existeActivaPorNombre("VERDADERO_FALSO")).isTrue();
+        assertThat(opcionRespuestaDAO.existeActivaPorNombre("  verdadero_falso  ")).isTrue();
+        assertThat(opcionRespuestaDAO.existeActivaPorNombre("ESCALA_HISTORICA")).isFalse();
+        assertThat(opcionRespuestaDAO.existeActivaPorNombre("  escala_historica ")).isFalse();
+        assertThat(opcionRespuestaDAO.existeActivaPorNombre("INEXISTENTE")).isFalse();
+        assertThat(opcionRespuestaDAO.existeActivaPorNombre("   ")).isFalse();
+        assertThat(opcionRespuestaDAO.existeActivaPorNombre(null)).isFalse();
+    }
+
     private static OpcionRespuesta opcion(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
         OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
         for (ItemOpcion item : items) {

@@ -1,5 +1,11 @@
 package com.deso.api.dto;
 
+import com.deso.api.validation.ItemsOpcionValidos;
+import com.deso.api.validation.OnAlta;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,8 +18,19 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OpcionRespuestaDTO {
+
     private Long id;
+
+    @NotBlank(groups = OnAlta.class, message = "El nombre es obligatorio.")
+    @Size(max = 50, message = "El nombre no puede superar los 50 caracteres.")
     private String nombre;
+
+    @NotBlank(message = "La descripción es obligatoria.")
+    @Size(max = 1000, message = "La descripción no puede superar los 1000 caracteres.")
     private String descripcion;
-    private List<ItemOpcionDTO> items;
+
+    @NotNull(message = "Debe ingresar al menos dos ítems de opción.")
+    @Size(min = 2, message = "Debe ingresar al menos dos ítems de opción.")
+    @ItemsOpcionValidos
+    private List<@NotNull(message = "El ítem de opción no puede ser nulo.") @Valid ItemOpcionDTO> items;
 }

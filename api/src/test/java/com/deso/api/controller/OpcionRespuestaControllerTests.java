@@ -166,6 +166,173 @@ class OpcionRespuestaControllerTests {
         assertThat(enviarGet("/" + eliminada.getId()).statusCode()).isEqualTo(404);
     }
 
+    @Test
+    void postCreaOpcionRespuestaConItemsOrdenadosNormalizadosYLocationHeader201() throws Exception {
+        String cuerpo = """
+                {
+                  "nombre": "  ESCALA_ACUERDO  ",
+                  "descripcion": "  Tres grados de acuerdo  ",
+                  "items": [
+                    { "orden": 3, "descripcion": "  De acuerdo  " },
+                    { "orden": 1, "descripcion": "  En desacuerdo  " },
+                    { "orden": 2, "descripcion": "  Neutral  " }
+                  ]
+                }
+                """;
+
+        HttpResponse<String> response = enviarPost(cuerpo);
+
+        assertThat(response.statusCode()).isEqualTo(201);
+        JsonNode creado = json.readTree(response.body());
+        long idCreado = creado.path("id").asLong();
+        assertThat(idCreado).isPositive();
+        assertThat(response.headers().firstValue("Location"))
+                .hasValue("/api/opciones-respuesta/" + idCreado);
+        assertThat(creado.path("nombre").asString()).isEqualTo("ESCALA_ACUERDO");
+        assertThat(creado.path("descripcion").asString()).isEqualTo("Tres grados de acuerdo");
+
+        JsonNode items = creado.path("items");
+        assertThat(items.size()).isEqualTo(3);
+        assertThat(items.get(0).path("orden").asInt()).isEqualTo(1);
+        assertThat(items.get(0).path("descripcion").asString()).isEqualTo("En desacuerdo");
+        assertThat(items.get(1).path("orden").asInt()).isEqualTo(2);
+        assertThat(items.get(1).path("descripcion").asString()).isEqualTo("Neutral");
+        assertThat(items.get(2).path("orden").asInt()).isEqualTo(3);
+        assertThat(items.get(2).path("descripcion").asString()).isEqualTo("De acuerdo");
+
+        HttpResponse<String> consulta = enviarGet("/" + idCreado);
+        assertThat(consulta.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(consulta.body()).path("nombre").asString()).isEqualTo("ESCALA_ACUERDO");
+    }
+
+    @Test
+    void postRechaza409SiNombreActivoExistePeroPermite201SiSoloExisteEliminada() throws Exception {
+        guardar("VERDADERO_FALSO", "Activa actual", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+        guardar("ESCALA_HISTORICA", "Dada de baja", true,
+                item(1, "Uno"), item(2, "Dos"));
+
+        HttpResponse<String> conflicto = enviarPost("""
+                {
+                  "nombre": "  verdadero_falso ",
+                  "descripcion": "Intento duplicado",
+                  "items": [
+                    { "orden": 1, "descripcion": "Sí" },
+                    { "orden": 2, "descripcion": "No" }
+                  ]
+                }
+                """);
+        assertThat(conflicto.statusCode()).isEqualTo(409);
+        JsonNode errConflicto = json.readTree(conflicto.body());
+        assertThat(errConflicto.path("erroresValidacion").path("nombre").asString()).isNotBlank();
+
+        HttpResponse<String> reutilizada = enviarPost("""
+                {
+                  "nombre": "ESCALA_HISTORICA",
+                  "descripcion": "Nueva versión activa",
+                  "items": [
+                    { "orden": 1, "descripcion": "Bajo" },
+                    { "orden": 2, "descripcion": "Alto" }
+                  ]
+                }
+                """);
+        assertThat(reutilizada.statusCode()).isEqualTo(201);
+        assertThat(json.readTree(reutilizada.body()).path("nombre").asString()).isEqualTo("ESCALA_HISTORICA");
+    }
+
+    @Test
+    void postDevuelve400ConErroresValidacionAnteOmisionesOLongitudesExcedidas() throws Exception {
+        HttpResponse<String> omisiones = enviarPost("""
+                {
+                  "nombre": "   ",
+                  "descripcion": "",
+                  "items": [
+                    { "orden": 1, "descripcion": "Único ítem" }
+                  ]
+                }
+                """);
+        assertThat(omisiones.statusCode()).isEqualTo(400);
+        JsonNode erroresOmision = json.readTree(omisiones.body()).path("erroresValidacion");
+        assertThat(erroresOmision.path("nombre").asString()).isNotBlank();
+        assertThat(erroresOmision.path("descripcion").asString()).isNotBlank();
+        assertThat(erroresOmision.path("items").asString()).isNotBlank();
+
+        String largosExcedidos = """
+                {
+                  "nombre": "%s",
+                  "descripcion": "%s",
+                  "items": [
+                    { "orden": 0, "descripcion": "   " },
+                    { "orden": 2, "descripcion": "%s" }
+                  ]
+                }
+                """.formatted("N".repeat(51), "D".repeat(1001), "I".repeat(151));
+
+        HttpResponse<String> excedidos = enviarPost(largosExcedidos);
+        assertThat(excedidos.statusCode()).isEqualTo(400);
+        JsonNode erroresLargos = json.readTree(excedidos.body()).path("erroresValidacion");
+        assertThat(erroresLargos.path("nombre").asString()).isNotBlank();
+        assertThat(erroresLargos.path("descripcion").asString()).isNotBlank();
+        assertThat(erroresLargos.path("items[0].orden").asString()).isNotBlank();
+        assertThat(erroresLargos.path("items[0].descripcion").asString()).isNotBlank();
+        assertThat(erroresLargos.path("items[1].descripcion").asString()).isNotBlank();
+    }
+
+    @Test
+    void postDevuelve400SiOrdenNoEsConsecutivoDesdeUnoOSiDescripcionesDeItemsSeRepiten() throws Exception {
+        HttpResponse<String> empiezaEnDos = enviarPost("""
+                {
+                  "nombre": "ESCALA_MAL_ORDEN",
+                  "descripcion": "Empieza en 2",
+                  "items": [
+                    { "orden": 2, "descripcion": "A" },
+                    { "orden": 3, "descripcion": "B" }
+                  ]
+                }
+                """);
+        assertThat(empiezaEnDos.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(empiezaEnDos.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+
+        HttpResponse<String> conSalto = enviarPost("""
+                {
+                  "nombre": "ESCALA_CON_SALTO",
+                  "descripcion": "Salta del 1 al 3",
+                  "items": [
+                    { "orden": 1, "descripcion": "A" },
+                    { "orden": 3, "descripcion": "B" }
+                  ]
+                }
+                """);
+        assertThat(conSalto.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(conSalto.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+
+        HttpResponse<String> ordenRepetido = enviarPost("""
+                {
+                  "nombre": "ESCALA_ORDEN_REPETIDO",
+                  "descripcion": "Repite orden 1",
+                  "items": [
+                    { "orden": 1, "descripcion": "A" },
+                    { "orden": 1, "descripcion": "B" }
+                  ]
+                }
+                """);
+        assertThat(ordenRepetido.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(ordenRepetido.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+
+        HttpResponse<String> descripcionRepetida = enviarPost("""
+                {
+                  "nombre": "ESCALA_DESC_REPETIDA",
+                  "descripcion": "Descripciones repetidas ignorando mayúsculas y espacios",
+                  "items": [
+                    { "orden": 1, "descripcion": "Verdadero" },
+                    { "orden": 2, "descripcion": "  verdadero  " }
+                  ]
+                }
+                """);
+        assertThat(descripcionRepetida.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(descripcionRepetida.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+    }
+
     private OpcionRespuesta guardar(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
         OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
         for (ItemOpcion item : items) {
@@ -189,6 +356,17 @@ class OpcionRespuestaControllerTests {
                 .timeout(Duration.ofSeconds(10))
                 .header("Accept", "application/json")
                 .GET()
+                .build();
+        return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> enviarPost(String cuerpoJson) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + puerto + "/api/opciones-respuesta"))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(cuerpoJson, StandardCharsets.UTF_8))
                 .build();
         return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
     }

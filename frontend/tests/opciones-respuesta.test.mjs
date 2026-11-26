@@ -5,9 +5,11 @@ import { afterEach, mock, test } from "node:test";
 register(new URL("./ts-resolver.mjs", import.meta.url));
 
 const { API_BASE_URL, ApiError } = await import("../src/service/api.ts");
-const { listarOpcionesRespuesta, obtenerOpcionRespuestaPorId } = await import(
-  "../src/service/opciones-respuesta.ts"
-);
+const {
+  crearOpcionRespuesta,
+  listarOpcionesRespuesta,
+  obtenerOpcionRespuestaPorId,
+} = await import("../src/service/opciones-respuesta.ts");
 
 afterEach(() => mock.restoreAll());
 
@@ -98,6 +100,76 @@ test("obtenerOpcionRespuestaPorId propaga ApiError 404 cuando la opción de resp
       assert.ok(error instanceof ApiError);
       assert.equal(error.status, 404);
       assert.match(error.message, /No se encontró la opción de respuesta/);
+      return true;
+    },
+  );
+});
+
+test("crearOpcionRespuesta envía POST /opciones-respuesta con cuerpo JSON y retorna la opción creada", async () => {
+  const payload = {
+    nombre: "ESCALA ACUERDO",
+    descripcion: "ESCALA DE TRES NIVELES DE ACUERDO",
+    items: [
+      { orden: 1, descripcion: "EN DESACUERDO" },
+      { orden: 2, descripcion: "NEUTRAL" },
+      { orden: 3, descripcion: "DE ACUERDO" },
+    ],
+  };
+
+  mock.method(globalThis, "fetch", async (url, init) => {
+    assert.equal(url, `${API_BASE_URL}/opciones-respuesta`);
+    assert.equal(init.method, "POST");
+    assert.deepEqual(JSON.parse(init.body), payload);
+    return Response.json(
+      {
+        id: 15,
+        ...payload,
+        items: payload.items.map((item, idx) => ({ id: idx + 100, ...item })),
+      },
+      { status: 201 },
+    );
+  });
+
+  const creada = await crearOpcionRespuesta(payload);
+
+  assert.equal(creada.id, 15);
+  assert.equal(creada.nombre, "ESCALA ACUERDO");
+  assert.equal(creada.items.length, 3);
+  assert.equal(creada.items[0].id, 100);
+});
+
+test("crearOpcionRespuesta propaga ApiError 409 con erroresValidacion cuando el nombre activo ya existe", async () => {
+  mock.method(globalThis, "fetch", async () => {
+    return Response.json(
+      {
+        status: 409,
+        error: "Recurso Duplicado",
+        message: "Ya existe una opción de respuesta activa con el nombre 'VERDADERO_FALSO'.",
+        path: "/api/opciones-respuesta",
+        erroresValidacion: {
+          nombre: "Ya existe una opción de respuesta activa con el nombre 'VERDADERO_FALSO'.",
+        },
+      },
+      { status: 409 },
+    );
+  });
+
+  await assert.rejects(
+    crearOpcionRespuesta({
+      nombre: "VERDADERO_FALSO",
+      descripcion: "OPCIONES DICOTÓMICAS",
+      items: [
+        { orden: 1, descripcion: "VERDADERO" },
+        { orden: 2, descripcion: "FALSO" },
+      ],
+    }),
+    (error) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.status, 409);
+      assert.equal(
+        error.details.erroresValidacion.nombre,
+        "Ya existe una opción de respuesta activa con el nombre 'VERDADERO_FALSO'.",
+      );
       return true;
     },
   );

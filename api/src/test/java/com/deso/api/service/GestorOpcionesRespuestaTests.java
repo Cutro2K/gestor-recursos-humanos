@@ -5,6 +5,7 @@ import com.deso.api.dto.ItemOpcionDTO;
 import com.deso.api.dto.ListadoOpcionRespuestaDTO;
 import com.deso.api.dto.OpcionRespuestaDTO;
 import com.deso.api.exception.RecursoActualmenteEliminadoException;
+import com.deso.api.exception.RecursoDuplicadoException;
 import com.deso.api.exception.RecursoNoEncontradoException;
 import com.deso.api.model.entity.ItemOpcion;
 import com.deso.api.model.entity.OpcionRespuesta;
@@ -86,6 +87,85 @@ class GestorOpcionesRespuestaTests {
                 .isInstanceOf(RecursoActualmenteEliminadoException.class);
     }
 
+    @Test
+    void darDeAltaNormalizaTextosOrdenaItemsPorOrdenAscendenteYPersisteComoActiva() {
+        OpcionRespuestaDTO solicitud = new OpcionRespuestaDTO(
+                null,
+                "  ESCALA_DESEMPENO  ",
+                "  Cinco niveles valorativos  ",
+                List.of(
+                        new ItemOpcionDTO(null, 3, "  Excelente  "),
+                        new ItemOpcionDTO(null, 1, "  Malo  "),
+                        new ItemOpcionDTO(null, 2, "  Regular  ")
+                )
+        );
+
+        OpcionRespuestaDTO creada = gestor.darDeAlta(solicitud);
+
+        assertThat(creada.getId()).isPositive();
+        assertThat(creada.getNombre()).isEqualTo("ESCALA_DESEMPENO");
+        assertThat(creada.getDescripcion()).isEqualTo("Cinco niveles valorativos");
+        assertThat(creada.getItems())
+                .extracting(ItemOpcionDTO::getOrden)
+                .containsExactly(1, 2, 3);
+        assertThat(creada.getItems())
+                .extracting(ItemOpcionDTO::getDescripcion)
+                .containsExactly("Malo", "Regular", "Excelente");
+        assertThat(creada.getItems()).allSatisfy(i -> assertThat(i.getId()).isPositive());
+
+        OpcionRespuesta persistida = opcionRespuestaDAO.buscarPorId(creada.getId()).orElseThrow();
+        assertThat(persistida.getEliminada()).isFalse();
+        assertThat(persistida.getItems()).allSatisfy(i -> assertThat(i.getOpcionRespuesta()).isSameAs(persistida));
+    }
+
+    @Test
+    void darDeAltaRechazaConRecursoDuplicadoEnCampoNombreSiYaExisteOtraActiva() {
+        guardar("VERDADERO_FALSO", "Opciones dicotómicas", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+
+        OpcionRespuestaDTO duplicada = new OpcionRespuestaDTO(
+                null,
+                "  verdadero_falso ",
+                "Otra descripción",
+                List.of(
+                        new ItemOpcionDTO(null, 1, "Sí"),
+                        new ItemOpcionDTO(null, 2, "No")
+                )
+        );
+
+        assertThatThrownBy(() -> gestor.darDeAlta(duplicada))
+                .isInstanceOfSatisfying(RecursoDuplicadoException.class, ex -> {
+                    assertThat(ex.getCampo()).isEqualTo("nombre");
+                    assertThat(ex.getMessage()).isNotBlank();
+                });
+    }
+
+    @Test
+    void darDeAltaPermiteReutilizarNombreDeOpcionRespuestaEliminadaLogicamente() {
+        OpcionRespuesta historica = guardar("VERDADERO_FALSO", "Versión histórica dada de baja", true,
+                item(1, "Verdadero"), item(2, "Falso"));
+
+        OpcionRespuestaDTO nueva = new OpcionRespuestaDTO(
+                null,
+                "  VERDADERO_FALSO  ",
+                "Nueva versión activa",
+                List.of(
+                        new ItemOpcionDTO(null, 2, "Falso"),
+                        new ItemOpcionDTO(null, 1, "Verdadero")
+                )
+        );
+
+        OpcionRespuestaDTO creada = gestor.darDeAlta(nueva);
+
+        assertThat(creada.getId()).isNotEqualTo(historica.getId());
+        assertThat(creada.getNombre()).isEqualTo("VERDADERO_FALSO");
+        assertThat(creada.getDescripcion()).isEqualTo("Nueva versión activa");
+        assertThat(gestor.buscarPorNombre("VERDADERO_FALSO", 0, 50))
+                .singleElement()
+                .extracting(ListadoOpcionRespuestaDTO::getId)
+                .isEqualTo(creada.getId());
+    }
+
     private OpcionRespuesta guardar(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
         OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
         for (ItemOpcion item : items) {
@@ -108,6 +188,17 @@ class GestorOpcionesRespuestaTests {
         @Override
         public Optional<OpcionRespuesta> buscarPorId(Long id) {
             return Optional.ofNullable(id == null ? null : store.get(id));
+        }
+
+        @Override
+        public boolean existeActivaPorNombre(String nombre) {
+            if (nombre == null || nombre.isBlank()) {
+                return false;
+            }
+            String normalizado = nombre.strip().toLowerCase(Locale.ROOT);
+            return store.values().stream()
+                    .filter(o -> !Boolean.TRUE.equals(o.getEliminada()))
+                    .anyMatch(o -> o.getNombre().strip().toLowerCase(Locale.ROOT).equals(normalizado));
         }
 
         @Override
