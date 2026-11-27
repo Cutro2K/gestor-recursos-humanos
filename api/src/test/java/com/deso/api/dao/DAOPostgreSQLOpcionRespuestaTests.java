@@ -1,8 +1,12 @@
 package com.deso.api.dao;
 
 import com.deso.api.dao.impl.OpcionRespuestaPostgreSQLDAO;
+import com.deso.api.model.entity.Competencia;
+import com.deso.api.model.entity.Factor;
 import com.deso.api.model.entity.ItemOpcion;
 import com.deso.api.model.entity.OpcionRespuesta;
+import com.deso.api.model.entity.Pregunta;
+import com.deso.api.model.enums.TipoCompetencia;
 import jakarta.persistence.EntityManager;
 import org.hibernate.Hibernate;
 import org.junit.jupiter.api.Test;
@@ -176,6 +180,43 @@ class DAOPostgreSQLOpcionRespuestaTests {
         assertThat(opcionRespuestaDAO.existeActivaPorNombre("INEXISTENTE")).isFalse();
         assertThat(opcionRespuestaDAO.existeActivaPorNombre("   ")).isFalse();
         assertThat(opcionRespuestaDAO.existeActivaPorNombre(null)).isFalse();
+    }
+
+    @Test
+    void estaEnUsoConsideraSoloPreguntasNoEliminadasYPermiteBajaLogicaCoexistiendoNombresEliminados() {
+        OpcionRespuesta usadaPorActiva = opcionRespuestaDAO.guardar(opcion("USADA_ACTIVA", "Con pregunta activa", false,
+                item(1, "Sí"), item(2, "No")));
+        OpcionRespuesta usadaSoloPorEliminada = opcionRespuestaDAO.guardar(opcion("ESCALA_REPETIDA", "Solo pregunta eliminada", false,
+                item(1, "Sí"), item(2, "No")));
+        OpcionRespuesta libre = opcionRespuestaDAO.guardar(opcion("LIBRE", "Sin preguntas", false,
+                item(1, "Sí"), item(2, "No")));
+        OpcionRespuesta historicaMismoNombre = opcionRespuestaDAO.guardar(opcion("ESCALA_REPETIDA", "Histórica ya eliminada", true,
+                item(1, "Uno"), item(2, "Dos")));
+
+        Factor factor = crearFactorBase();
+        entityManager.persist(new Pregunta(null, factor, usadaPorActiva, "P_ACTIVA", "¿Enunciado activo?", null, true, false));
+        entityManager.persist(new Pregunta(null, factor, usadaSoloPorEliminada, "P_BAJA", "¿Enunciado eliminado?", null, true, true));
+        limpiar();
+
+        assertThat(opcionRespuestaDAO.estaEnUso(usadaPorActiva.getId())).isTrue();
+        assertThat(opcionRespuestaDAO.estaEnUso(usadaSoloPorEliminada.getId())).isFalse();
+        assertThat(opcionRespuestaDAO.estaEnUso(libre.getId())).isFalse();
+        assertThat(opcionRespuestaDAO.estaEnUso(99999L)).isFalse();
+        assertThat(opcionRespuestaDAO.estaEnUso(null)).isFalse();
+
+        opcionRespuestaDAO.eliminarLogicamente(usadaSoloPorEliminada.getId());
+        limpiar();
+
+        assertThat(opcionRespuestaDAO.buscarPorId(usadaSoloPorEliminada.getId()).orElseThrow().getEliminada()).isTrue();
+        assertThat(opcionRespuestaDAO.buscarPorId(historicaMismoNombre.getId()).orElseThrow().getEliminada()).isTrue();
+    }
+
+    private Factor crearFactorBase() {
+        Competencia competencia = new Competencia(null, "COMP_01", "Competencia Base", "Desc", TipoCompetencia.TECNICA, false);
+        entityManager.persist(competencia);
+        Factor factor = new Factor(null, competencia, "FAC_01", "Factor Base", 1, "Desc", false);
+        entityManager.persist(factor);
+        return factor;
     }
 
     private static OpcionRespuesta opcion(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {

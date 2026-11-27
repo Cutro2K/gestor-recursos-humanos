@@ -1,17 +1,24 @@
 package com.deso.api.service;
 
+import com.deso.api.dao.AuditoriaDAO;
+import com.deso.api.dao.ConsultorDAO;
 import com.deso.api.dao.OpcionRespuestaDAO;
 import com.deso.api.dto.ItemOpcionDTO;
 import com.deso.api.dto.ListadoOpcionRespuestaDTO;
 import com.deso.api.dto.OpcionRespuestaDTO;
+import com.deso.api.exception.CredencialesInvalidasException;
 import com.deso.api.exception.RecursoActualmenteEliminadoException;
 import com.deso.api.exception.RecursoDuplicadoException;
+import com.deso.api.exception.RecursoEnUsoException;
 import com.deso.api.exception.RecursoNoEncontradoException;
+import com.deso.api.model.entity.Consultor;
 import com.deso.api.model.entity.ItemOpcion;
 import com.deso.api.model.entity.OpcionRespuesta;
+import com.deso.api.model.entity.RegistroAuditoria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -23,11 +30,20 @@ import java.util.Map;
 public class GestorOpcionesRespuesta {
 
     private static final int OFFSET_ORDEN_TEMPORAL = 1_000_000;
+    private static final String ACCION_BAJA = "BAJA";
+    private static final String ENTIDAD_OPCION_RESPUESTA = "OPCION_RESPUESTA";
 
     private final OpcionRespuestaDAO opcionRespuestaDAO;
+    private final ConsultorDAO consultorDAO;
+    private final AuditoriaDAO auditoriaDAO;
 
-    public GestorOpcionesRespuesta(OpcionRespuestaDAO opcionRespuestaDAO) {
+    public GestorOpcionesRespuesta(
+            OpcionRespuestaDAO opcionRespuestaDAO,
+            ConsultorDAO consultorDAO,
+            AuditoriaDAO auditoriaDAO) {
         this.opcionRespuestaDAO = opcionRespuestaDAO;
+        this.consultorDAO = consultorDAO;
+        this.auditoriaDAO = auditoriaDAO;
     }
 
     @Transactional
@@ -110,6 +126,39 @@ public class GestorOpcionesRespuesta {
 
         OpcionRespuesta guardada = opcionRespuestaDAO.guardar(existente);
         return mapearADTO(guardada);
+    }
+
+    @Transactional
+    public void eliminarLogicamente(Long id, Long consultorId) {
+        Consultor consultor = consultorDAO.buscarPorId(consultorId)
+                .filter(c -> Boolean.TRUE.equals(c.getActivo()))
+                .orElseThrow(() -> new CredencialesInvalidasException("La sesión no es válida o venció"));
+
+        OpcionRespuesta opcion = opcionRespuestaDAO.buscarPorId(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No se encontró la opción de respuesta con ID " + id + "."));
+
+        if (Boolean.TRUE.equals(opcion.getEliminada())) {
+            throw new RecursoActualmenteEliminadoException(
+                    "La opción de respuesta con ID " + id + " se encuentra eliminada.");
+        }
+
+        if (opcionRespuestaDAO.estaEnUso(id)) {
+            throw new RecursoEnUsoException(
+                    "La opción de respuesta " + opcion.getNombre()
+                            + " está siendo usada en la base de datos y no puede eliminarse.");
+        }
+
+        opcionRespuestaDAO.eliminarLogicamente(opcion.getId());
+        auditoriaDAO.guardar(new RegistroAuditoria(
+                null,
+                consultor,
+                LocalDateTime.now(),
+                ACCION_BAJA,
+                ENTIDAD_OPCION_RESPUESTA,
+                opcion.getId(),
+                "Baja lógica de la opción de respuesta " + opcion.getNombre()
+        ));
     }
 
     public List<ListadoOpcionRespuestaDTO> buscarPorNombre(String nombre, Integer offset, Integer cantidad) {

@@ -82,6 +82,21 @@ public class OpcionRespuestaPostgreSQLDAO implements OpcionRespuestaDAO {
     }
 
     @Override
+    public boolean estaEnUso(Long id) {
+        if (id == null) {
+            return false;
+        }
+        Long count = entityManager.createQuery("""
+                SELECT COUNT(p) FROM Pregunta p
+                WHERE p.opcionRespuesta.id = :id
+                AND p.eliminada = false
+                """, Long.class)
+                .setParameter("id", id)
+                .getSingleResult();
+        return count > 0;
+    }
+
+    @Override
     @Transactional
     public OpcionRespuesta guardar(OpcionRespuesta opcionRespuesta) {
         if (opcionRespuesta.getId() == null) {
@@ -89,6 +104,18 @@ public class OpcionRespuestaPostgreSQLDAO implements OpcionRespuestaDAO {
             return opcionRespuesta;
         } else {
             return entityManager.merge(opcionRespuesta);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void eliminarLogicamente(Long id) {
+        if (id == null) {
+            return;
+        }
+        OpcionRespuesta opcion = entityManager.find(OpcionRespuesta.class, id);
+        if (opcion != null) {
+            opcion.setEliminada(true);
         }
     }
 

@@ -1,8 +1,11 @@
 package com.deso.api.controller;
 
+import com.deso.api.dao.ConsultorDAO;
 import com.deso.api.dao.OpcionRespuestaDAO;
+import com.deso.api.model.entity.Consultor;
 import com.deso.api.model.entity.ItemOpcion;
 import com.deso.api.model.entity.OpcionRespuesta;
+import com.deso.api.security.EmisorTokens;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +23,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,6 +53,12 @@ class OpcionRespuestaControllerTests {
     private OpcionRespuestaDAO opcionRespuestaDAO;
 
     @Autowired
+    private ConsultorDAO consultorDAO;
+
+    @Autowired
+    private EmisorTokens emisorTokens;
+
+    @Autowired
     private JdbcTemplate jdbc;
 
     @Autowired
@@ -58,8 +71,13 @@ class OpcionRespuestaControllerTests {
 
     @AfterEach
     void limpiarBase() {
+        jdbc.update("delete from registro_auditoria");
+        jdbc.update("delete from pregunta");
+        jdbc.update("delete from factor");
+        jdbc.update("delete from competencia");
         jdbc.update("delete from item_opcion");
         jdbc.update("delete from opcion_respuesta");
+        jdbc.update("delete from consultor");
     }
 
     @Test
@@ -415,6 +433,134 @@ class OpcionRespuestaControllerTests {
         assertThat(enviarPut(999999L, cuerpo).statusCode()).isEqualTo(404);
     }
 
+    @Test
+    void deleteMarcaEliminadaAunqueExistaOtraEliminadaConMismoNombreOPreguntaEliminadaYRegistraAuditoria204() throws Exception {
+        Consultor consultor = guardarConsultor("CONSULTOR_BAJA", true);
+        String token = tokenConsultorVigente(consultor.getId());
+
+        OpcionRespuesta historica = guardar("VERDADERO_FALSO", "Histórica eliminada", true,
+                item(1, "Verdadero"), item(2, "Falso"));
+        OpcionRespuesta activa = guardar("VERDADERO_FALSO", "Activa con pregunta eliminada", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+        insertarPreguntaAsociada(activa.getId(), "PREG_ELIMINADA", true);
+
+        HttpResponse<String> response = enviarDelete("/" + activa.getId(), token);
+
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(response.body()).isEmpty();
+        assertThat(enviarGet("/" + activa.getId()).statusCode()).isEqualTo(404);
+        assertThat(enviarGet("").body()).isEqualTo("[]");
+        assertThat(opcionRespuestaDAO.buscarPorId(historica.getId()).orElseThrow().getEliminada()).isTrue();
+
+        Map<String, Object> auditoria = jdbc.queryForMap(
+                "select consultor_id, fecha_hora, accion, entidad, entidad_id, detalle from registro_auditoria");
+        assertThat(((Number) auditoria.get("CONSULTOR_ID")).longValue()).isEqualTo(consultor.getId());
+        assertThat(auditoria.get("FECHA_HORA")).isNotNull();
+        assertThat(auditoria.get("ACCION")).isEqualTo("BAJA");
+        assertThat(auditoria.get("ENTIDAD")).isEqualTo("OPCION_RESPUESTA");
+        assertThat(((Number) auditoria.get("ENTIDAD_ID")).longValue()).isEqualTo(activa.getId());
+        assertThat(String.valueOf(auditoria.get("DETALLE"))).contains("VERDADERO_FALSO");
+    }
+
+    @Test
+    void deleteRechaza409ConMensajeExactoSiTienePreguntaActivaAsociadaYNoAudita() throws Exception {
+        Consultor consultor = guardarConsultor("CONSULTOR_409", true);
+        String token = tokenConsultorVigente(consultor.getId());
+
+        OpcionRespuesta enUso = guardar("ESCALA_DESEMPENO", "Cinco niveles", false,
+                item(1, "Malo"), item(2, "Excelente"));
+        insertarPreguntaAsociada(enUso.getId(), "PREG_ACTIVA", false);
+
+        HttpResponse<String> response = enviarDelete("/" + enUso.getId(), token);
+
+        assertThat(response.statusCode()).isEqualTo(409);
+        JsonNode body = json.readTree(response.body());
+        assertThat(body.path("message").asString())
+                .isEqualTo("La opción de respuesta ESCALA_DESEMPENO está siendo usada en la base de datos y no puede eliminarse.");
+        assertThat(enviarGet("/" + enUso.getId()).statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("select count(*) from registro_auditoria", Integer.class)).isZero();
+    }
+
+    @Test
+    void deleteExigeCookieAccessTokenDeConsultorActivoYDevuelve401AnteRechazos() throws Exception {
+        Consultor activo = guardarConsultor("CONSULTOR_OK", true);
+        Consultor inactivo = guardarConsultor("CONSULTOR_INACTIVO", false);
+        OpcionRespuesta opcion = guardar("ESCALA_AUTH", "Activa", false,
+                item(1, "Sí"), item(2, "No"));
+
+        String tokenVencido = emisorTokens.emitirAccess(
+                String.valueOf(activo.getId()), "CONSULTOR", Instant.now().minusSeconds(10));
+        String refreshToken = emisorTokens.emitirRefresh(
+                1L, 0L, String.valueOf(activo.getId()), "CONSULTOR", Instant.now().plusSeconds(300));
+        String tokenCandidato = emisorTokens.emitirAccess(
+                String.valueOf(activo.getId()), "CANDIDATO", Instant.now().plusSeconds(300));
+        String tokenConsultorInexistente = tokenConsultorVigente(999999L);
+        String tokenConsultorInactivo = tokenConsultorVigente(inactivo.getId());
+
+        assertThat(enviarDelete("/" + opcion.getId(), null).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), "token-invalido").statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenVencido).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), refreshToken).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenCandidato).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenConsultorInexistente).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenConsultorInactivo).statusCode()).isEqualTo(401);
+
+        assertThat(enviarGet("/" + opcion.getId()).statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("select count(*) from registro_auditoria", Integer.class)).isZero();
+    }
+
+    @Test
+    void deleteDevuelve400SiIdNoEsPositivoY404SiNoExisteOYaEstaEliminada() throws Exception {
+        Consultor consultor = guardarConsultor("CONSULTOR_404", true);
+        String token = tokenConsultorVigente(consultor.getId());
+        OpcionRespuesta eliminada = guardar("ESCALA_YA_BAJA", "Eliminada", true,
+                item(1, "Sí"), item(2, "No"));
+
+        assertThat(enviarDelete("/0", token).statusCode()).isEqualTo(400);
+        assertThat(enviarDelete("/-5", token).statusCode()).isEqualTo(400);
+        assertThat(enviarDelete("/abc", token).statusCode()).isEqualTo(400);
+        assertThat(enviarDelete("/999999", token).statusCode()).isEqualTo(404);
+        assertThat(enviarDelete("/" + eliminada.getId(), token).statusCode()).isEqualTo(404);
+        assertThat(jdbc.queryForObject("select count(*) from registro_auditoria", Integer.class)).isZero();
+    }
+
+    private Consultor guardarConsultor(String username, boolean activo) {
+        return consultorDAO.guardar(new Consultor(
+                null,
+                username,
+                "Ana",
+                "Gómez",
+                username.toLowerCase(Locale.ROOT) + "@capitalhumano.test",
+                activo,
+                LocalDateTime.of(2026, 4, 1, 9, 0)));
+    }
+
+    private String tokenConsultorVigente(Long consultorId) {
+        return emisorTokens.emitirAccess(
+                String.valueOf(consultorId), "CONSULTOR", Instant.now().plusSeconds(300));
+    }
+
+    private void insertarPreguntaAsociada(Long opcionRespuestaId, String sufijo, boolean eliminada) {
+        jdbc.update("""
+                insert into competencia (codigo, nombre, descripcion, tipo, eliminada)
+                values (?, ?, 'Desc', 'TECNICA', false)
+                """, "COMP_" + sufijo, "Competencia " + sufijo);
+        Long competenciaId = jdbc.queryForObject(
+                "select id from competencia where codigo = ?", Long.class, "COMP_" + sufijo);
+
+        jdbc.update("""
+                insert into factor (competencia_id, codigo, nombre, orden, descripcion, eliminado)
+                values (?, ?, ?, 1, 'Desc', false)
+                """, competenciaId, "FAC_" + sufijo, "Factor " + sufijo);
+        Long factorId = jdbc.queryForObject(
+                "select id from factor where codigo = ?", Long.class, "FAC_" + sufijo);
+
+        jdbc.update("""
+                insert into pregunta (factor_id, opcion_respuesta_id, nombre, enunciado, descripcion, activa, eliminada)
+                values (?, ?, ?, ?, null, true, ?)
+                """, factorId, opcionRespuestaId, "PREG_" + sufijo, "¿Enunciado " + sufijo + "?", eliminada);
+    }
+
     private OpcionRespuesta guardar(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
         OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
         for (ItemOpcion item : items) {
@@ -462,5 +608,17 @@ class OpcionRespuestaControllerTests {
                 .PUT(HttpRequest.BodyPublishers.ofString(cuerpoJson, StandardCharsets.UTF_8))
                 .build();
         return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> enviarDelete(String sufijo, String accessToken) throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + puerto + "/api/opciones-respuesta" + sufijo))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .DELETE();
+        if (accessToken != null) {
+            builder.header("Cookie", AuthController.COOKIE_ACCESS + "=" + accessToken);
+        }
+        return CLIENTE.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 }

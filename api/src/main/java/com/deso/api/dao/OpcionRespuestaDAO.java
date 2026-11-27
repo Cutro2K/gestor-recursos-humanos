@@ -13,7 +13,11 @@ public interface OpcionRespuestaDAO {
 
     List<OpcionRespuesta> buscarActivasPorNombre(String nombre, Integer offset, Integer cantidad);
 
+    boolean estaEnUso(Long id);
+
     OpcionRespuesta guardar(OpcionRespuesta opcionRespuesta);
+
+    void eliminarLogicamente(Long id);
 
     /** Sincroniza de inmediato los cambios pendientes con la base de datos. */
     void sincronizar();

@@ -1,24 +1,33 @@
 package com.deso.api.service;
 
+import com.deso.api.dao.AuditoriaDAO;
+import com.deso.api.dao.ConsultorDAO;
 import com.deso.api.dao.OpcionRespuestaDAO;
 import com.deso.api.dto.ItemOpcionDTO;
 import com.deso.api.dto.ListadoOpcionRespuestaDTO;
 import com.deso.api.dto.OpcionRespuestaDTO;
+import com.deso.api.exception.CredencialesInvalidasException;
 import com.deso.api.exception.RecursoActualmenteEliminadoException;
 import com.deso.api.exception.RecursoDuplicadoException;
+import com.deso.api.exception.RecursoEnUsoException;
 import com.deso.api.exception.RecursoNoEncontradoException;
+import com.deso.api.model.entity.Consultor;
 import com.deso.api.model.entity.ItemOpcion;
 import com.deso.api.model.entity.OpcionRespuesta;
+import com.deso.api.model.entity.RegistroAuditoria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,12 +38,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GestorOpcionesRespuestaTests {
 
     private FakeOpcionRespuestaDAO opcionRespuestaDAO;
+    private FakeConsultorDAO consultorDAO;
+    private FakeAuditoriaDAO auditoriaDAO;
     private GestorOpcionesRespuesta gestor;
 
     @BeforeEach
     void setUp() {
         opcionRespuestaDAO = new FakeOpcionRespuestaDAO();
-        gestor = new GestorOpcionesRespuesta(opcionRespuestaDAO);
+        consultorDAO = new FakeConsultorDAO();
+        auditoriaDAO = new FakeAuditoriaDAO();
+        gestor = new GestorOpcionesRespuesta(opcionRespuestaDAO, consultorDAO, auditoriaDAO);
     }
 
     @Test
@@ -337,6 +350,90 @@ class GestorOpcionesRespuestaTests {
                 .containsExactly("Bajo", "Medio", "Alto");
     }
 
+    @Test
+    void eliminarLogicamenteMarcaEliminadaAunqueExistaOtraEliminadaConMismoNombreYRegistraAuditoria() {
+        Consultor consultor = guardarConsultor("CONSULTOR1", true);
+        OpcionRespuesta historica = guardar("VERDADERO_FALSO", "Versión previa dada de baja", true,
+                item(1, "Verdadero"), item(2, "Falso"));
+        OpcionRespuesta activa = guardar("VERDADERO_FALSO", "Versión activa a eliminar", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+
+        LocalDateTime antes = LocalDateTime.now();
+        gestor.eliminarLogicamente(activa.getId(), consultor.getId());
+        LocalDateTime despues = LocalDateTime.now();
+
+        assertThat(opcionRespuestaDAO.buscarPorId(activa.getId()).orElseThrow().getEliminada()).isTrue();
+        assertThat(opcionRespuestaDAO.buscarPorId(historica.getId()).orElseThrow().getEliminada()).isTrue();
+        assertThat(gestor.buscarPorNombre("VERDADERO_FALSO", 0, 50)).isEmpty();
+
+        assertThat(auditoriaDAO.registros()).singleElement().satisfies(registro -> {
+            assertThat(registro.getId()).isPositive();
+            assertThat(registro.getConsultor()).isSameAs(consultor);
+            assertThat(registro.getFechaHora()).isBetween(antes, despues);
+            assertThat(registro.getAccion()).isEqualTo("BAJA");
+            assertThat(registro.getEntidad()).isEqualTo("OPCION_RESPUESTA");
+            assertThat(registro.getEntidadId()).isEqualTo(activa.getId());
+            assertThat(registro.getDetalle()).contains("VERDADERO_FALSO");
+        });
+    }
+
+    @Test
+    void eliminarLogicamenteRechazaConCredencialesInvalidasSiConsultorNoExisteOEstaInactivo() {
+        Consultor inactivo = guardarConsultor("CONSULTOR_BAJA", false);
+        OpcionRespuesta activa = guardar("ESCALA_DESEMPENO", "Activa", false,
+                item(1, "Malo"), item(2, "Bueno"));
+
+        assertThatThrownBy(() -> gestor.eliminarLogicamente(activa.getId(), null))
+                .isInstanceOf(CredencialesInvalidasException.class);
+        assertThatThrownBy(() -> gestor.eliminarLogicamente(activa.getId(), 999L))
+                .isInstanceOf(CredencialesInvalidasException.class);
+        assertThatThrownBy(() -> gestor.eliminarLogicamente(activa.getId(), inactivo.getId()))
+                .isInstanceOf(CredencialesInvalidasException.class);
+
+        assertThat(opcionRespuestaDAO.buscarPorId(activa.getId()).orElseThrow().getEliminada()).isFalse();
+        assertThat(auditoriaDAO.registros()).isEmpty();
+    }
+
+    @Test
+    void eliminarLogicamenteFallaSiOpcionRespuestaNoExisteOYaEstaEliminada() {
+        Consultor consultor = guardarConsultor("CONSULTOR1", true);
+        OpcionRespuesta eliminada = guardar("OPCION_BAJA", "Dada de baja", true,
+                item(1, "Sí"), item(2, "No"));
+
+        assertThatThrownBy(() -> gestor.eliminarLogicamente(999L, consultor.getId()))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+        assertThatThrownBy(() -> gestor.eliminarLogicamente(eliminada.getId(), consultor.getId()))
+                .isInstanceOf(RecursoActualmenteEliminadoException.class);
+
+        assertThat(auditoriaDAO.registros()).isEmpty();
+    }
+
+    @Test
+    void eliminarLogicamenteRechazaConRecursoEnUsoYMensajeOficialSiTienePreguntasActivas() {
+        Consultor consultor = guardarConsultor("CONSULTOR1", true);
+        OpcionRespuesta enUso = guardar("ESCALA_LIKERT", "Cinco niveles", false,
+                item(1, "Totalmente en desacuerdo"), item(2, "Totalmente de acuerdo"));
+        opcionRespuestaDAO.marcarEnUso(enUso.getId());
+
+        assertThatThrownBy(() -> gestor.eliminarLogicamente(enUso.getId(), consultor.getId()))
+                .isInstanceOf(RecursoEnUsoException.class)
+                .hasMessage("La opción de respuesta ESCALA_LIKERT está siendo usada en la base de datos y no puede eliminarse.");
+
+        assertThat(opcionRespuestaDAO.buscarPorId(enUso.getId()).orElseThrow().getEliminada()).isFalse();
+        assertThat(auditoriaDAO.registros()).isEmpty();
+    }
+
+    private Consultor guardarConsultor(String username, boolean activo) {
+        return consultorDAO.guardar(new Consultor(
+                null,
+                username,
+                "Ana",
+                "Gómez",
+                username.toLowerCase(Locale.ROOT) + "@capitalhumano.test",
+                activo,
+                LocalDateTime.of(2026, 4, 1, 9, 0)));
+    }
+
     private OpcionRespuesta guardar(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
         OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
         for (ItemOpcion item : items) {
@@ -353,8 +450,13 @@ class GestorOpcionesRespuestaTests {
     /** Doble en memoria con la misma semántica que OpcionRespuestaPostgreSQLDAO. */
     private static class FakeOpcionRespuestaDAO implements OpcionRespuestaDAO {
         private final Map<Long, OpcionRespuesta> store = new LinkedHashMap<>();
+        private final Set<Long> enUso = new HashSet<>();
         private long opcionSeq = 1;
         private long itemSeq = 1;
+
+        void marcarEnUso(Long id) {
+            enUso.add(id);
+        }
 
         @Override
         public Optional<OpcionRespuesta> buscarPorId(Long id) {
@@ -387,6 +489,11 @@ class GestorOpcionesRespuestaTests {
         }
 
         @Override
+        public boolean estaEnUso(Long id) {
+            return id != null && enUso.contains(id);
+        }
+
+        @Override
         public OpcionRespuesta guardar(OpcionRespuesta opcionRespuesta) {
             if (opcionRespuesta.getId() == null) {
                 opcionRespuesta.setId(opcionSeq++);
@@ -403,12 +510,77 @@ class GestorOpcionesRespuestaTests {
         }
 
         @Override
+        public void eliminarLogicamente(Long id) {
+            OpcionRespuesta opcion = id == null ? null : store.get(id);
+            if (opcion != null) {
+                opcion.setEliminada(true);
+            }
+        }
+
+        @Override
         public void sincronizar() {
         }
 
         private static boolean contiene(String valor, String buscado) {
             return buscado == null || buscado.isBlank()
                     || valor.toLowerCase(Locale.ROOT).contains(buscado.strip().toLowerCase(Locale.ROOT));
+        }
+    }
+
+    private static class FakeConsultorDAO implements ConsultorDAO {
+        private final Map<Long, Consultor> store = new LinkedHashMap<>();
+        private long seq = 1;
+
+        @Override
+        public Optional<Consultor> buscarPorUsername(String username) {
+            if (username == null || username.isBlank()) {
+                return Optional.empty();
+            }
+            return store.values().stream()
+                    .filter(c -> Boolean.TRUE.equals(c.getActivo()) && c.getUsername().equals(username.strip()))
+                    .findFirst();
+        }
+
+        @Override
+        public Optional<Consultor> buscarPorId(Long id) {
+            return Optional.ofNullable(id == null ? null : store.get(id));
+        }
+
+        @Override
+        public Optional<Consultor> buscarPorEmail(String email) {
+            if (email == null || email.isBlank()) {
+                return Optional.empty();
+            }
+            return store.values().stream()
+                    .filter(c -> Boolean.TRUE.equals(c.getActivo()) && c.getEmail().equalsIgnoreCase(email.strip()))
+                    .findFirst();
+        }
+
+        @Override
+        public Consultor guardar(Consultor consultor) {
+            if (consultor.getId() == null) {
+                consultor.setId(seq++);
+            }
+            store.put(consultor.getId(), consultor);
+            return consultor;
+        }
+    }
+
+    private static class FakeAuditoriaDAO implements AuditoriaDAO {
+        private final List<RegistroAuditoria> store = new ArrayList<>();
+        private long seq = 1;
+
+        @Override
+        public RegistroAuditoria guardar(RegistroAuditoria registro) {
+            if (registro.getId() == null) {
+                registro.setId(seq++);
+            }
+            store.add(registro);
+            return registro;
+        }
+
+        List<RegistroAuditoria> registros() {
+            return List.copyOf(store);
         }
     }
 }
