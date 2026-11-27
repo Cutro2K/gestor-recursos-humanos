@@ -338,7 +338,7 @@ export function ModificarOpcionRespuestaModal({
                           }
                           maxLength={LIMITES_OPCION_RESPUESTA.descripcionItem}
                           error={errores.filas[indice]?.descripcion}
-                          placeholder={`Ej: OPCIÓN ${indice + 1}`}
+                          placeholder={`Ej: ÍTEM ${indice + 1}`}
                           disabled={guardando}
                           autoComplete="off"
                           required

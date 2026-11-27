@@ -168,18 +168,19 @@
   gap: 12px;
 }
 
-.itemRow {
+.itemRow,
+.itemRowFixed {
   display: grid;
-  grid-template-columns: 108px minmax(0, 1fr) auto;
   align-items: start;
   gap: 10px;
 }
 
+.itemRow {
+  grid-template-columns: 108px minmax(0, 1fr) auto;
+}
+
 .itemRowFixed {
-  display: grid;
   grid-template-columns: 108px minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
 }
 
 .itemOrderCol,
