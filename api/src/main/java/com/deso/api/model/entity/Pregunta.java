@@ -1,10 +1,14 @@
 package com.deso.api.model.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 
 @Entity
 @Table(
@@ -48,4 +52,7 @@ public class Pregunta {
 
     @Column(nullable = false)
     private Boolean eliminada = false;
+
+    @OneToMany(mappedBy = "pregunta", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PreguntaItemOpcion> ponderaciones = new ArrayList<>();
 }
