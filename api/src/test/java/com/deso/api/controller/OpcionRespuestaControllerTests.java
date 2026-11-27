@@ -309,7 +309,7 @@ class OpcionRespuestaControllerTests {
                 }
                 """);
         assertThat(empiezaEnDos.statusCode()).isEqualTo(400);
-        assertThat(json.readTree(empiezaEnDos.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+        assertThat(json.readTree(empiezaEnDos.body()).path("message").asString()).isNotBlank();
 
         HttpResponse<String> conSalto = enviarPost("""
                 {
@@ -322,7 +322,7 @@ class OpcionRespuestaControllerTests {
                 }
                 """);
         assertThat(conSalto.statusCode()).isEqualTo(400);
-        assertThat(json.readTree(conSalto.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+        assertThat(json.readTree(conSalto.body()).path("message").asString()).isNotBlank();
 
         HttpResponse<String> ordenRepetido = enviarPost("""
                 {
@@ -335,7 +335,7 @@ class OpcionRespuestaControllerTests {
                 }
                 """);
         assertThat(ordenRepetido.statusCode()).isEqualTo(400);
-        assertThat(json.readTree(ordenRepetido.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+        assertThat(json.readTree(ordenRepetido.body()).path("message").asString()).isNotBlank();
 
         HttpResponse<String> descripcionRepetida = enviarPost("""
                 {
@@ -348,7 +348,7 @@ class OpcionRespuestaControllerTests {
                 }
                 """);
         assertThat(descripcionRepetida.statusCode()).isEqualTo(400);
-        assertThat(json.readTree(descripcionRepetida.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
+        assertThat(json.readTree(descripcionRepetida.body()).path("message").asString()).isNotBlank();
     }
 
     @Test
@@ -359,7 +359,7 @@ class OpcionRespuestaControllerTests {
         long c = op.getItems().get(2).getId();
 
         HttpResponse<String> response = enviarPut(op.getId(), """
-                { "descripcion": "  Nueva  ", "items": [
+                { "nombre": "ESCALA_PUT", "descripcion": "  Nueva  ", "items": [
                   { "id": %d, "orden": 2, "descripcion": "B" },
                   { "id": %d, "orden": 1, "descripcion": "A" },
                   { "id": %d, "orden": 3, "descripcion": "Cc" } ] }
@@ -388,7 +388,7 @@ class OpcionRespuestaControllerTests {
         String items = "[{\"id\": %d, \"orden\": 1, \"descripcion\": \"A\"}, {\"id\": %d, \"orden\": 2, \"descripcion\": \"B\"}]".formatted(a, b);
 
         assertThat(enviarPut(op.getId(), "{\"nombre\": \" ESCALA_NOMBRE \", \"descripcion\": \"X\", \"items\": " + items + "}").statusCode()).isEqualTo(200);
-        assertThat(enviarPut(op.getId(), "{\"descripcion\": \"Y\", \"items\": " + items + "}").statusCode()).isEqualTo(200);
+        assertThat(enviarPut(op.getId(), "{\"descripcion\": \"Y\", \"items\": " + items + "}").statusCode()).isEqualTo(400);
         assertThat(enviarPut(op.getId(), "{\"nombre\": \"OTRO\", \"descripcion\": \"Z\", \"items\": " + items + "}").statusCode()).isEqualTo(400);
     }
 
@@ -400,22 +400,22 @@ class OpcionRespuestaControllerTests {
         long ajeno = otra.getItems().get(0).getId();
 
         assertThat(enviarPut(op.getId(), """
-                { "descripcion": "X", "items": [
+                { "nombre": "ESCALA_IDS", "descripcion": "X", "items": [
                   { "id": %d, "orden": 1, "descripcion": "A" },
                   { "id": %d, "orden": 2, "descripcion": "B" } ] }
                 """.formatted(a, ajeno)).statusCode()).isEqualTo(400);
         assertThat(enviarPut(op.getId(), """
-                { "descripcion": "X", "items": [
+                { "nombre": "ESCALA_IDS", "descripcion": "X", "items": [
                   { "id": %d, "orden": 1, "descripcion": "A" },
                   { "id": %d, "orden": 2, "descripcion": "B" } ] }
                 """.formatted(a, a)).statusCode()).isEqualTo(400);
         assertThat(enviarPut(op.getId(), """
-                { "descripcion": "X", "items": [
+                { "nombre": "ESCALA_IDS", "descripcion": "X", "items": [
                   { "orden": 1, "descripcion": "A" },
                   { "orden": 2, "descripcion": "B" } ] }
                 """).statusCode()).isEqualTo(400);
-        assertThat(enviarPut(op.getId(), "{ \"descripcion\": \"\", \"items\": [] }").statusCode()).isEqualTo(400);
-        assertThat(enviarPut(0L, "{ \"descripcion\": \"X\", \"items\": [] }").statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), "{ \"nombre\": \"ESCALA_IDS\", \"descripcion\": \"\", \"items\": [] }").statusCode()).isEqualTo(400);
+        assertThat(enviarPut(0L, "{ \"nombre\": \"ESCALA_IDS\", \"descripcion\": \"X\", \"items\": [] }").statusCode()).isEqualTo(400);
     }
 
     @Test
@@ -424,7 +424,7 @@ class OpcionRespuestaControllerTests {
         long a = eliminada.getItems().get(0).getId();
         long b = eliminada.getItems().get(1).getId();
         String cuerpo = """
-                { "descripcion": "X", "items": [
+                { "nombre": "ESCALA_BAJA", "descripcion": "X", "items": [
                   { "id": %d, "orden": 1, "descripcion": "A" },
                   { "id": %d, "orden": 2, "descripcion": "B" } ] }
                 """.formatted(a, b);

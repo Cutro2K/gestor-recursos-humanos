@@ -147,6 +147,7 @@ export function ModificarOpcionRespuestaModal({
     setGuardando(true);
     try {
       await modificarOpcionRespuesta(opcion.id, {
+        nombre: opcion.nombre.trim(),
         descripcion: descripcion.trim().toUpperCase(),
         items: filas.map((fila) => ({
           id: fila.id,

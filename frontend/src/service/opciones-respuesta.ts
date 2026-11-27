@@ -35,6 +35,7 @@ export type CrearOpcionRespuestaPayload = {
 };
 
 export type ModificarOpcionRespuestaPayload = {
+  nombre?: string;
   descripcion: string;
   items: Array<{
     id: number;
