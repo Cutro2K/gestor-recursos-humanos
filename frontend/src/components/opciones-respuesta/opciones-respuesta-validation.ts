@@ -1,5 +1,6 @@
 /**
- * Reglas puras de validación del formulario de alta de Opción de Respuesta (CU 29).
+ * Reglas puras de validación de los formularios de alta (CU 29) y modificación (CU 30)
+ * de Opción de Respuesta.
  * Alineadas simétricamente con las restricciones de Jakarta Bean Validation del backend.
  */
 export const LIMITES_OPCION_RESPUESTA = {
@@ -20,7 +21,13 @@ export type FormularioAltaOpcionRespuesta = {
   items: ItemOpcionFormInput[];
 };
 
+export type FormularioModificacionOpcionRespuesta = {
+  descripcion: string;
+  items: ItemOpcionFormInput[];
+};
+
 export type ErroresItemOpcion = {
+  id?: string;
   orden?: string;
   descripcion?: string;
 };
@@ -32,19 +39,30 @@ export type ErroresAltaOpcionRespuesta = {
   filas: ErroresItemOpcion[];
 };
 
+export type ErroresModificacionOpcionRespuesta = {
+  descripcion?: string;
+  items?: string;
+  filas: ErroresItemOpcion[];
+};
+
 export function crearErroresVacios(cantidadFilas: number): ErroresAltaOpcionRespuesta {
   return {
     filas: Array.from({ length: cantidadFilas }, () => ({})),
   };
 }
 
-export function sinErroresAltaOpcionRespuesta(errores: ErroresAltaOpcionRespuesta): boolean {
+export function sinErroresModificacionOpcionRespuesta(
+  errores: ErroresModificacionOpcionRespuesta,
+): boolean {
   return (
-    !errores.nombre &&
     !errores.descripcion &&
     !errores.items &&
-    errores.filas.every((fila) => !fila.orden && !fila.descripcion)
+    errores.filas.every((fila) => !fila.id && !fila.orden && !fila.descripcion)
   );
+}
+
+export function sinErroresAltaOpcionRespuesta(errores: ErroresAltaOpcionRespuesta): boolean {
+  return !errores.nombre && sinErroresModificacionOpcionRespuesta(errores);
 }
 
 /**
@@ -65,17 +83,12 @@ export function sugerirSiguienteOrden(ordenesActuales: string[]): string {
   return String(base + 1);
 }
 
-export function validarAltaOpcionRespuesta(
-  datos: FormularioAltaOpcionRespuesta,
-): ErroresAltaOpcionRespuesta {
-  const errores = crearErroresVacios(datos.items.length);
-
-  const nombre = datos.nombre.trim();
-  if (!nombre) {
-    errores.nombre = "El nombre es obligatorio.";
-  } else if (nombre.length > LIMITES_OPCION_RESPUESTA.nombre) {
-    errores.nombre = `El nombre no puede superar los ${LIMITES_OPCION_RESPUESTA.nombre} caracteres.`;
-  }
+export function validarModificacionOpcionRespuesta(
+  datos: FormularioModificacionOpcionRespuesta,
+): ErroresModificacionOpcionRespuesta {
+  const errores: ErroresModificacionOpcionRespuesta = {
+    filas: Array.from({ length: datos.items.length }, () => ({})),
+  };
 
   const descripcion = datos.descripcion.trim();
   if (!descripcion) {
@@ -139,8 +152,26 @@ export function validarAltaOpcionRespuesta(
   return errores;
 }
 
+export function validarAltaOpcionRespuesta(
+  datos: FormularioAltaOpcionRespuesta,
+): ErroresAltaOpcionRespuesta {
+  const errores: ErroresAltaOpcionRespuesta = validarModificacionOpcionRespuesta({
+    descripcion: datos.descripcion,
+    items: datos.items,
+  });
+
+  const nombre = datos.nombre.trim();
+  if (!nombre) {
+    errores.nombre = "El nombre es obligatorio.";
+  } else if (nombre.length > LIMITES_OPCION_RESPUESTA.nombre) {
+    errores.nombre = `El nombre no puede superar los ${LIMITES_OPCION_RESPUESTA.nombre} caracteres.`;
+  }
+
+  return errores;
+}
+
 /**
- * Convierte el mapa `erroresValidacion` devuelto por la API (400 / 409) en errores inline del formulario.
+ * Convierte el mapa `erroresValidacion` devuelto por la API (400 / 409) en errores inline del formulario de alta.
  */
 export function mapearErroresBackendAlta(
   erroresValidacion: Record<string, string> | undefined,
@@ -172,10 +203,10 @@ export function mapearErroresBackendAlta(
       continue;
     }
 
-    const matchFila = /^items\[(\d+)\]\.(orden|descripcion)$/.exec(campo);
+    const matchFila = /^items\[(\d+)\]\.(id|orden|descripcion)$/.exec(campo);
     if (matchFila) {
       const indice = Number(matchFila[1]);
-      const propiedad = matchFila[2] as "orden" | "descripcion";
+      const propiedad = matchFila[2] as "id" | "orden" | "descripcion";
       if (indice >= 0 && indice < resultado.filas.length) {
         resultado.filas[indice][propiedad] = mensaje;
         asignado = true;
@@ -184,4 +215,25 @@ export function mapearErroresBackendAlta(
   }
 
   return asignado ? resultado : null;
+}
+
+/**
+ * Convierte el mapa `erroresValidacion` devuelto por la API (400) en errores inline del formulario de modificación.
+ */
+export function mapearErroresBackendModificacion(
+  erroresValidacion: Record<string, string> | undefined,
+  cantidadFilas: number,
+): ErroresModificacionOpcionRespuesta | null {
+  const mapeado = mapearErroresBackendAlta(erroresValidacion, cantidadFilas);
+  if (!mapeado) {
+    return null;
+  }
+
+  const { descripcion, items, filas } = mapeado;
+  const tieneAlguno =
+    Boolean(descripcion) ||
+    Boolean(items) ||
+    filas.some((f) => Boolean(f.id) || Boolean(f.orden) || Boolean(f.descripcion));
+
+  return tieneAlguno ? { descripcion, items, filas } : null;
 }

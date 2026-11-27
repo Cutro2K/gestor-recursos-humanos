@@ -175,6 +175,13 @@
   gap: 10px;
 }
 
+.itemRowFixed {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
 .itemOrderCol,
 .itemDescCol {
   min-width: 0;
@@ -185,7 +192,8 @@
 }
 
 @media (max-width: 560px) {
-  .itemRow {
+  .itemRow,
+  .itemRowFixed {
     grid-template-columns: 96px minmax(0, 1fr);
   }
 

@@ -9,8 +9,9 @@ import type { CriterioAplicado } from "../ui/criterios-busqueda";
 import { PageHeader } from "../ui/page-header";
 import { Icon } from "../ui/icon";
 import { useErrorFeedback } from "../ui/use-error-feedback";
-import { AccionEnDesarrolloModal } from "../ui/accion-en-desarrollo-modal";
 import { AltaOpcionRespuestaModal } from "./alta-opcion-respuesta-modal";
+import { EliminarOpcionRespuestaModal } from "./eliminar-opcion-respuesta-modal";
+import { ModificarOpcionRespuestaModal } from "./modificar-opcion-respuesta-modal";
 import { listarOpcionesRespuesta } from "@/service/opciones-respuesta";
 import type {
   FiltrosOpcionesRespuesta,
@@ -332,19 +333,21 @@ export function OpcionesRespuestaPanel() {
                       className={styles.selectionActions}
                       variants={reducirMovimiento ? accionesVariantsReducidas : accionesVariants}
                     >
-                      <AccionEnDesarrolloModal
-                        etiquetaBoton="Modificar"
-                        variant="secondary"
-                        titulo="Modificar Opción de Respuesta"
-                        nombreRecurso={opcionSeleccionada.nombre}
-                        detalle="La modificación de opciones de respuesta estará disponible próximamente."
+                      <ModificarOpcionRespuestaModal
+                        key={`modificar-${opcionSeleccionada.id}`}
+                        opcion={opcionSeleccionada}
+                        onModificada={() => {
+                          setSelectedId(null);
+                          recargar();
+                        }}
                       />
-                      <AccionEnDesarrolloModal
-                        etiquetaBoton="Eliminar"
-                        variant="destructive"
-                        titulo="Dar de baja Opción de Respuesta"
-                        nombreRecurso={opcionSeleccionada.nombre}
-                        detalle="La baja de opciones de respuesta estará disponible próximamente."
+                      <EliminarOpcionRespuestaModal
+                        key={`eliminar-${opcionSeleccionada.id}`}
+                        opcion={opcionSeleccionada}
+                        onEliminada={() => {
+                          setSelectedId(null);
+                          recargar();
+                        }}
                       />
                     </motion.div>
                   </div>

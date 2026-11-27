@@ -7,7 +7,9 @@ register(new URL("./ts-resolver.mjs", import.meta.url));
 const { API_BASE_URL, ApiError } = await import("../src/service/api.ts");
 const {
   crearOpcionRespuesta,
+  eliminarOpcionRespuesta,
   listarOpcionesRespuesta,
+  modificarOpcionRespuesta,
   obtenerOpcionRespuestaPorId,
 } = await import("../src/service/opciones-respuesta.ts");
 
@@ -174,3 +176,117 @@ test("crearOpcionRespuesta propaga ApiError 409 con erroresValidacion cuando el 
     },
   );
 });
+
+test("modificarOpcionRespuesta envía PUT /opciones-respuesta/{id} con descripcion e items existentes y devuelve la opción actualizada", async () => {
+  const payload = {
+    descripcion: "ESCALA VALORATIVA ACTUALIZADA",
+    items: [
+      { id: 10, orden: 2, descripcion: "REGULAR" },
+      { id: 11, orden: 1, descripcion: "MALO" },
+    ],
+  };
+
+  mock.method(globalThis, "fetch", async (url, init) => {
+    assert.equal(url, `${API_BASE_URL}/opciones-respuesta/2`);
+    assert.equal(init.method, "PUT");
+    assert.deepEqual(JSON.parse(init.body), payload);
+    return Response.json({
+      id: 2,
+      nombre: "ESCALA_DESEMPENO",
+      descripcion: payload.descripcion,
+      items: [
+        { id: 11, orden: 1, descripcion: "MALO" },
+        { id: 10, orden: 2, descripcion: "REGULAR" },
+      ],
+    });
+  });
+
+  const actualizada = await modificarOpcionRespuesta(2, payload);
+
+  assert.equal(actualizada.id, 2);
+  assert.equal(actualizada.descripcion, "ESCALA VALORATIVA ACTUALIZADA");
+  assert.equal(actualizada.items.length, 2);
+  assert.equal(actualizada.items[0].id, 11);
+  assert.equal(actualizada.items[0].orden, 1);
+});
+
+test("modificarOpcionRespuesta propaga ApiError 400 con erroresValidacion cuando la validación del backend falla", async () => {
+  mock.method(globalThis, "fetch", async () => {
+    return Response.json(
+      {
+        status: 400,
+        error: "Datos de Entrada Inválidos",
+        message: "Error de validación en los campos enviados.",
+        path: "/api/opciones-respuesta/2",
+        erroresValidacion: {
+          items: "El orden de visualización debe ser consecutivo comenzando en 1.",
+          "items[0].descripcion": "La descripción del ítem es obligatoria.",
+        },
+      },
+      { status: 400 },
+    );
+  });
+
+  await assert.rejects(
+    modificarOpcionRespuesta(2, {
+      descripcion: "DESC",
+      items: [
+        { id: 10, orden: 1, descripcion: "" },
+        { id: 11, orden: 3, descripcion: "REGULAR" },
+      ],
+    }),
+    (error) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.status, 400);
+      assert.equal(
+        error.details.erroresValidacion["items[0].descripcion"],
+        "La descripción del ítem es obligatoria.",
+      );
+      return true;
+    },
+  );
+});
+
+test("eliminarOpcionRespuesta envía DELETE /opciones-respuesta/{id} y resuelve ante respuesta 204", async () => {
+  const peticiones = [];
+  mock.method(globalThis, "fetch", async (url, init) => {
+    peticiones.push({ url, method: init.method });
+    return new Response(null, { status: 204 });
+  });
+
+  await eliminarOpcionRespuesta(5);
+
+  assert.deepEqual(peticiones, [
+    { url: `${API_BASE_URL}/opciones-respuesta/5`, method: "DELETE" },
+  ]);
+});
+
+test("eliminarOpcionRespuesta propaga ApiError 409 cuando la opción está en uso por preguntas activas", async () => {
+  mock.method(globalThis, "fetch", async () => {
+    return Response.json(
+      {
+        status: 409,
+        error: "Recurso en Uso",
+        message:
+          "La opción de respuesta ESCALA_DESEMPENO está siendo usada en la base de datos y no puede eliminarse.",
+        path: "/api/opciones-respuesta/2",
+      },
+      { status: 409 },
+    );
+  });
+
+  await assert.rejects(
+    eliminarOpcionRespuesta(2),
+    (error) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.status, 409);
+      assert.equal(
+        error.message,
+        "La opción de respuesta ESCALA_DESEMPENO está siendo usada en la base de datos y no puede eliminarse.",
+      );
+      return true;
+    },
+  );
+});
+
+

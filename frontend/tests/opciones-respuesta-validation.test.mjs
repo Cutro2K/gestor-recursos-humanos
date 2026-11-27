@@ -3,9 +3,12 @@ import { test } from "node:test";
 import {
   LIMITES_OPCION_RESPUESTA,
   mapearErroresBackendAlta,
+  mapearErroresBackendModificacion,
   sinErroresAltaOpcionRespuesta,
+  sinErroresModificacionOpcionRespuesta,
   sugerirSiguienteOrden,
   validarAltaOpcionRespuesta,
+  validarModificacionOpcionRespuesta,
 } from "../src/components/opciones-respuesta/opciones-respuesta-validation.ts";
 
 test("acepta una opción de respuesta válida con órdenes consecutivos 1..N", () => {
@@ -170,4 +173,50 @@ test("mapearErroresBackendAlta traduce erroresValidacion de campos, lista y fila
   assert.equal(mapeado.items, "Orden no consecutivo.");
   assert.equal(mapeado.filas[0].orden, "Orden inválido.");
   assert.equal(mapeado.filas[1].descripcion, "Descripción obligatoria.");
+});
+
+test("validarModificacionOpcionRespuesta acepta modificación válida sin exigir nombre editable y valida descripción, secuencia 1..N y duplicados", () => {
+  const valida = validarModificacionOpcionRespuesta({
+    descripcion: "ESCALA VALORATIVA ACTUALIZADA",
+    items: [
+      { orden: "2", descripcion: "REGULAR" },
+      { orden: "1", descripcion: "MALO" },
+    ],
+  });
+  assert.ok(sinErroresModificacionOpcionRespuesta(valida));
+
+  const invalida = validarModificacionOpcionRespuesta({
+    descripcion: "   ",
+    items: [
+      { orden: "1", descripcion: "Igual" },
+      { orden: "3", descripcion: "  IGUAL " },
+    ],
+  });
+  assert.equal(sinErroresModificacionOpcionRespuesta(invalida), false);
+  assert.ok(invalida.descripcion);
+  assert.ok(invalida.items);
+  assert.ok(invalida.filas[1].descripcion);
+});
+
+test("mapearErroresBackendModificacion traduce erroresValidacion de descripcion, items y parámetros por fila incluyendo id", () => {
+  const mapeado = mapearErroresBackendModificacion(
+    {
+      descripcion: "La descripción es obligatoria.",
+      items: "El orden de visualización debe ser consecutivo comenzando en 1.",
+      "items[0].id": "El identificador del ítem es obligatorio.",
+      "items[0].orden": "El orden debe ser un entero positivo.",
+      "items[1].descripcion": "La descripción del ítem es obligatoria.",
+    },
+    2,
+  );
+
+  assert.ok(mapeado);
+  assert.equal(mapeado.descripcion, "La descripción es obligatoria.");
+  assert.equal(
+    mapeado.items,
+    "El orden de visualización debe ser consecutivo comenzando en 1.",
+  );
+  assert.equal(mapeado.filas[0].id, "El identificador del ítem es obligatorio.");
+  assert.equal(mapeado.filas[0].orden, "El orden debe ser un entero positivo.");
+  assert.equal(mapeado.filas[1].descripcion, "La descripción del ítem es obligatoria.");
 });

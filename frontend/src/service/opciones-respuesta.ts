@@ -34,6 +34,15 @@ export type CrearOpcionRespuestaPayload = {
   }>;
 };
 
+export type ModificarOpcionRespuestaPayload = {
+  descripcion: string;
+  items: Array<{
+    id: number;
+    orden: number;
+    descripcion: string;
+  }>;
+};
+
 const CANTIDAD_POR_PAGINA = 50;
 
 /**
@@ -111,4 +120,41 @@ export async function crearOpcionRespuesta(
     throw new Error("No se pudo registrar la opción de respuesta.");
   }
   return resultado;
+}
+
+/**
+ * Modifica la descripción y los ítems de opción existentes de una opción de respuesta activa.
+ * Endpoint: PUT /api/opciones-respuesta/{id} (CU 30)
+ */
+export async function modificarOpcionRespuesta(
+  id: number,
+  datos: ModificarOpcionRespuestaPayload,
+  signal?: AbortSignal,
+): Promise<OpcionRespuestaDetalle> {
+  const resultado = await apiRequest<OpcionRespuestaDetalle>(
+    `opciones-respuesta/${id}`,
+    {
+      method: "PUT",
+      json: datos,
+      signal,
+    },
+  );
+  if (!resultado) {
+    throw new Error("No se pudo modificar la opción de respuesta.");
+  }
+  return resultado;
+}
+
+/**
+ * Realiza la baja lógica de una opción de respuesta activa si no está en uso por preguntas activas.
+ * Endpoint: DELETE /api/opciones-respuesta/{id} (CU 31)
+ */
+export async function eliminarOpcionRespuesta(
+  id: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  await apiRequest<void>(`opciones-respuesta/${id}`, {
+    method: "DELETE",
+    signal,
+  });
 }
