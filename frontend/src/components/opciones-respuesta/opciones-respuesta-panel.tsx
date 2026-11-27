@@ -9,7 +9,7 @@ import type { CriterioAplicado } from "../ui/criterios-busqueda";
 import { PageHeader } from "../ui/page-header";
 import { Icon } from "../ui/icon";
 import { useErrorFeedback } from "../ui/use-error-feedback";
-import { AccionEnDesarrolloModal } from "./accion-en-desarrollo-modal";
+import { AccionEnDesarrolloModal } from "../ui/accion-en-desarrollo-modal";
 import { AltaOpcionRespuestaModal } from "./alta-opcion-respuesta-modal";
 import { listarOpcionesRespuesta } from "@/service/opciones-respuesta";
 import type {

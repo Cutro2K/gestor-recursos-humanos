@@ -16,10 +16,6 @@ export type ListadoOpcionRespuestaDTO = {
   descripcion: string;
 };
 
-export type OpcionRespuesta = ListadoOpcionRespuestaDTO & {
-  items?: ItemOpcion[];
-};
-
 export type OpcionRespuestaDetalle = ListadoOpcionRespuestaDTO & {
   items: ItemOpcion[];
 };

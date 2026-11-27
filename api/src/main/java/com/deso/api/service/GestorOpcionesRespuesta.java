@@ -79,14 +79,7 @@ public class GestorOpcionesRespuesta {
 
     @Transactional
     public OpcionRespuestaDTO actualizar(OpcionRespuestaDTO datos) {
-        OpcionRespuesta existente = opcionRespuestaDAO.buscarPorId(datos.getId())
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se encontró la opción de respuesta con ID " + datos.getId() + "."));
-
-        if (Boolean.TRUE.equals(existente.getEliminada())) {
-            throw new RecursoActualmenteEliminadoException(
-                    "La opción de respuesta con ID " + datos.getId() + " se encuentra eliminada.");
-        }
+        OpcionRespuesta existente = obtenerActivaPorId(datos.getId());
 
         if (datos.getNombre() != null && !datos.getNombre().isBlank()
                 && !datos.getNombre().strip().equals(existente.getNombre().strip())) {
@@ -134,14 +127,7 @@ public class GestorOpcionesRespuesta {
                 .filter(c -> Boolean.TRUE.equals(c.getActivo()))
                 .orElseThrow(() -> new CredencialesInvalidasException("La sesión no es válida o venció"));
 
-        OpcionRespuesta opcion = opcionRespuestaDAO.buscarPorId(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No se encontró la opción de respuesta con ID " + id + "."));
-
-        if (Boolean.TRUE.equals(opcion.getEliminada())) {
-            throw new RecursoActualmenteEliminadoException(
-                    "La opción de respuesta con ID " + id + " se encuentra eliminada.");
-        }
+        OpcionRespuesta opcion = obtenerActivaPorId(id);
 
         if (opcionRespuestaDAO.estaEnUso(id)) {
             throw new RecursoEnUsoException(
@@ -169,6 +155,10 @@ public class GestorOpcionesRespuesta {
     }
 
     public OpcionRespuestaDTO buscarPorId(Long id) {
+        return mapearADTO(obtenerActivaPorId(id));
+    }
+
+    private OpcionRespuesta obtenerActivaPorId(Long id) {
         OpcionRespuesta opcion = opcionRespuestaDAO.buscarPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No se encontró la opción de respuesta con ID " + id + "."));
@@ -178,7 +168,7 @@ public class GestorOpcionesRespuesta {
                     "La opción de respuesta con ID " + id + " se encuentra eliminada.");
         }
 
-        return mapearADTO(opcion);
+        return opcion;
     }
 
     private ListadoOpcionRespuestaDTO mapearAListadoDTO(OpcionRespuesta opcion) {

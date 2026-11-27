@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import type { FormEvent, MouseEvent } from "react";
 import { Button, Modal, Stack, Surface, TextField } from "react-ui-lib";
+import { Feedback } from "../ui/feedback";
 import { ApiError } from "@/service/api";
 import { crearOpcionRespuesta } from "@/service/opciones-respuesta";
 import {
@@ -241,9 +242,12 @@ export function AltaOpcionRespuestaModal({ onCreada }: { onCreada?: () => void }
         <form id={formId} onSubmit={(e) => void handleSubmit(e)} noValidate>
           <Stack gap="md">
             {errorServidor && (
-              <div className={styles.formAlert} role="alert">
+              <Feedback
+                title="No se pudo registrar la opción de respuesta"
+                variant="error"
+              >
                 {errorServidor}
-              </div>
+              </Feedback>
             )}
 
             <TextField
