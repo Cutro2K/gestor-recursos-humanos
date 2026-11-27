@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button, Modal, Stack, Surface, useToast } from "react-ui-lib";
-import { Feedback } from "../ui/feedback";
 import { eliminarOpcionRespuesta } from "@/service/opciones-respuesta";
 import type { ListadoOpcionRespuestaDTO } from "@/service/opciones-respuesta";
 import styles from "./opciones-respuesta.module.css";
@@ -18,18 +17,15 @@ export function EliminarOpcionRespuestaModal({
 }: EliminarOpcionRespuestaModalProps) {
   const [abierto, setAbierto] = useState(false);
   const [eliminando, setEliminando] = useState(false);
-  const [errorEliminacion, setErrorEliminacion] = useState<string | null>(null);
   const toast = useToast();
 
   function cambiarEstadoModal(open: boolean) {
     if (eliminando) return;
-    setErrorEliminacion(null);
     setAbierto(open);
   }
 
   async function confirmarEliminacion() {
     setEliminando(true);
-    setErrorEliminacion(null);
     try {
       await eliminarOpcionRespuesta(opcion.id);
       toast.success(
@@ -43,7 +39,6 @@ export function EliminarOpcionRespuestaModal({
         error instanceof Error
           ? error.message
           : "No se pudo completar la eliminación de la opción de respuesta.";
-      setErrorEliminacion(mensaje);
       toast.error("Error al eliminar", mensaje);
     } finally {
       setEliminando(false);
@@ -87,15 +82,6 @@ export function EliminarOpcionRespuestaModal({
       }
     >
       <Stack gap="sm">
-        {errorEliminacion && (
-          <Feedback
-            title="No se pudo eliminar la opción de respuesta"
-            variant="error"
-          >
-            {errorEliminacion}
-          </Feedback>
-        )}
-
         <Surface bordered padding="sm">
           <Stack gap="sm">
             <span className="font-semibold">{opcion.nombre}</span>
