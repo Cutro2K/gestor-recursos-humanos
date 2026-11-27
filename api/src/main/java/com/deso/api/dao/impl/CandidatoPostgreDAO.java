@@ -44,6 +44,11 @@ public class CandidatoPostgreDAO implements CandidatoDAO {
 				.getResultList();
 	}
 
+	@Override
+	public Optional<Candidato> buscarPorId(Long id) {
+		return Optional.ofNullable(entityManager.find(Candidato.class, id));
+	}
+
 	private String patronDeBusqueda(String valor) {
 		if (valor == null || valor.isBlank()) {
 			return null;

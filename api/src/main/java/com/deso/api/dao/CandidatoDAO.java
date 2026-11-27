@@ -13,6 +13,9 @@ public interface CandidatoDAO {
 	public List<Candidato> listarActivos(
 			String apellido, String nombre, Long nroCandidato, Long cursor, int cantidad);
 
+	/** Busca un candidato por su ID primario. */
+	public Optional<Candidato> buscarPorId(Long id);
+
 	/** Busca por el identificador del sistema de origen, incluyendo candidatos dados de baja. */
 	public Optional<Candidato> buscarPorNumeroCandidato(Long numero);
 
