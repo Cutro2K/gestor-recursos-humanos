@@ -91,4 +91,10 @@ public class OpcionRespuestaPostgreSQLDAO implements OpcionRespuestaDAO {
             return entityManager.merge(opcionRespuesta);
         }
     }
+
+    @Override
+    @Transactional
+    public void sincronizar() {
+        entityManager.flush();
+    }
 }

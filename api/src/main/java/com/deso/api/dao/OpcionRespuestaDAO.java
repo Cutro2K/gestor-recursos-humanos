@@ -14,4 +14,7 @@ public interface OpcionRespuestaDAO {
     List<OpcionRespuesta> buscarActivasPorNombre(String nombre, Integer offset, Integer cantidad);
 
     OpcionRespuesta guardar(OpcionRespuesta opcionRespuesta);
+
+    /** Sincroniza de inmediato los cambios pendientes con la base de datos. */
+    void sincronizar();
 }

@@ -4,6 +4,7 @@ import com.deso.api.dto.ListadoOpcionRespuestaDTO;
 import com.deso.api.dto.OpcionRespuestaDTO;
 import com.deso.api.service.GestorOpcionesRespuesta;
 import com.deso.api.validation.OnAlta;
+import com.deso.api.validation.OnModificacion;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -14,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,6 +30,7 @@ import java.util.List;
  * Endpoints expuestos:
  * - POST /api/opciones-respuesta     (CU 29): Da de alta una nueva opción de respuesta con sus ítems de opción.
  * - GET /api/opciones-respuesta      (CU 24): Busca opciones de respuesta activas filtrando por nombre (paginado).
+ * - PUT /api/opciones-respuesta/{id} (CU 30): Modifica descripción e ítems de una opción de respuesta activa in-place.
  * - GET /api/opciones-respuesta/{id} (CU 21 / CU 22 / CU 30): Obtiene el detalle de una opción de respuesta activa con sus ítems ordenados.
  */
 @RestController
@@ -67,5 +70,13 @@ public class OpcionRespuestaController {
     public OpcionRespuestaDTO obtenerPorId(
             @PathVariable @Positive(message = "El ID de la opción de respuesta debe ser positivo.") Long id) {
         return gestorOpcionesRespuesta.buscarPorId(id);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public OpcionRespuestaDTO modificar(
+            @PathVariable @Positive(message = "El ID de la opción de respuesta debe ser positivo.") Long id,
+            @Validated(OnModificacion.class) @RequestBody OpcionRespuestaDTO request) {
+        request.setId(id);
+        return gestorOpcionesRespuesta.actualizar(request);
     }
 }

@@ -333,6 +333,88 @@ class OpcionRespuestaControllerTests {
         assertThat(json.readTree(descripcionRepetida.body()).path("erroresValidacion").path("items").asString()).isNotBlank();
     }
 
+    @Test
+    void putActualizaInPlaceConIntercambiosDeOrdenYDescripcionPreservandoIdsYNombre200() throws Exception {
+        OpcionRespuesta op = guardar("ESCALA_PUT", "Inicial", false, item(1, "A"), item(2, "B"), item(3, "C"));
+        long a = op.getItems().get(0).getId();
+        long b = op.getItems().get(1).getId();
+        long c = op.getItems().get(2).getId();
+
+        HttpResponse<String> response = enviarPut(op.getId(), """
+                { "descripcion": "  Nueva  ", "items": [
+                  { "id": %d, "orden": 2, "descripcion": "B" },
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 3, "descripcion": "Cc" } ] }
+                """.formatted(a, b, c));
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode body = json.readTree(response.body());
+        assertThat(body.path("nombre").asString()).isEqualTo("ESCALA_PUT");
+        assertThat(body.path("descripcion").asString()).isEqualTo("Nueva");
+        JsonNode items = body.path("items");
+        assertThat(items.size()).isEqualTo(3);
+        assertThat(items.get(0).path("id").asLong()).isEqualTo(b);
+        assertThat(items.get(0).path("descripcion").asString()).isEqualTo("A");
+        assertThat(items.get(1).path("id").asLong()).isEqualTo(a);
+        assertThat(items.get(1).path("descripcion").asString()).isEqualTo("B");
+        assertThat(items.get(2).path("id").asLong()).isEqualTo(c);
+        assertThat(items.get(2).path("orden").asInt()).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from item_opcion", Integer.class)).isEqualTo(3);
+    }
+
+    @Test
+    void putPermiteNombreOmitidoOIgualYRechaza400NombreDistinto() throws Exception {
+        OpcionRespuesta op = guardar("ESCALA_NOMBRE", "Inicial", false, item(1, "A"), item(2, "B"));
+        long a = op.getItems().get(0).getId();
+        long b = op.getItems().get(1).getId();
+        String items = "[{\"id\": %d, \"orden\": 1, \"descripcion\": \"A\"}, {\"id\": %d, \"orden\": 2, \"descripcion\": \"B\"}]".formatted(a, b);
+
+        assertThat(enviarPut(op.getId(), "{\"nombre\": \" ESCALA_NOMBRE \", \"descripcion\": \"X\", \"items\": " + items + "}").statusCode()).isEqualTo(200);
+        assertThat(enviarPut(op.getId(), "{\"descripcion\": \"Y\", \"items\": " + items + "}").statusCode()).isEqualTo(200);
+        assertThat(enviarPut(op.getId(), "{\"nombre\": \"OTRO\", \"descripcion\": \"Z\", \"items\": " + items + "}").statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void putDevuelve400SiConjuntoDeIdsDeItemsNoCoincideOFallaValidacion() throws Exception {
+        OpcionRespuesta op = guardar("ESCALA_IDS", "Inicial", false, item(1, "A"), item(2, "B"));
+        OpcionRespuesta otra = guardar("ESCALA_OTRA", "Otra", false, item(1, "A"), item(2, "B"));
+        long a = op.getItems().get(0).getId();
+        long ajeno = otra.getItems().get(0).getId();
+
+        assertThat(enviarPut(op.getId(), """
+                { "descripcion": "X", "items": [
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 2, "descripcion": "B" } ] }
+                """.formatted(a, ajeno)).statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), """
+                { "descripcion": "X", "items": [
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 2, "descripcion": "B" } ] }
+                """.formatted(a, a)).statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), """
+                { "descripcion": "X", "items": [
+                  { "orden": 1, "descripcion": "A" },
+                  { "orden": 2, "descripcion": "B" } ] }
+                """).statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), "{ \"descripcion\": \"\", \"items\": [] }").statusCode()).isEqualTo(400);
+        assertThat(enviarPut(0L, "{ \"descripcion\": \"X\", \"items\": [] }").statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void putDevuelve404SiNoExisteOEstaEliminada() throws Exception {
+        OpcionRespuesta eliminada = guardar("ESCALA_BAJA", "Baja", true, item(1, "A"), item(2, "B"));
+        long a = eliminada.getItems().get(0).getId();
+        long b = eliminada.getItems().get(1).getId();
+        String cuerpo = """
+                { "descripcion": "X", "items": [
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 2, "descripcion": "B" } ] }
+                """.formatted(a, b);
+
+        assertThat(enviarPut(eliminada.getId(), cuerpo).statusCode()).isEqualTo(404);
+        assertThat(enviarPut(999999L, cuerpo).statusCode()).isEqualTo(404);
+    }
+
     private OpcionRespuesta guardar(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
         OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
         for (ItemOpcion item : items) {
@@ -367,6 +449,17 @@ class OpcionRespuestaControllerTests {
                 .header("Accept", "application/json")
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(cuerpoJson, StandardCharsets.UTF_8))
+                .build();
+        return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> enviarPut(Long id, String cuerpoJson) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + puerto + "/api/opciones-respuesta/" + id))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(cuerpoJson, StandardCharsets.UTF_8))
                 .build();
         return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
     }

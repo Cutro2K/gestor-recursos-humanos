@@ -166,6 +166,177 @@ class GestorOpcionesRespuestaTests {
                 .isEqualTo(creada.getId());
     }
 
+    @Test
+    void actualizarModificaDescripcionEItemsInPlacePreservandoIdsYNombreYOrdenandoAscendentemente() {
+        OpcionRespuesta original = guardar("ESCALA_DESEMPENO", "Descripción inicial", false,
+                item(1, "Malo"),
+                item(2, "Regular"),
+                item(3, "Bueno"));
+        ItemOpcion itemMalo = original.getItems().get(0);
+        ItemOpcion itemRegular = original.getItems().get(1);
+        ItemOpcion itemBueno = original.getItems().get(2);
+
+        OpcionRespuestaDTO solicitud = new OpcionRespuestaDTO(
+                original.getId(),
+                null,
+                "  Tres niveles actualizados  ",
+                List.of(
+                        new ItemOpcionDTO(itemMalo.getId(), 3, "  Excelente  "),
+                        new ItemOpcionDTO(itemRegular.getId(), 1, "  Insuficiente  "),
+                        new ItemOpcionDTO(itemBueno.getId(), 2, "  Aceptable  ")
+                )
+        );
+
+        OpcionRespuestaDTO actualizada = gestor.actualizar(solicitud);
+
+        assertThat(actualizada.getId()).isEqualTo(original.getId());
+        assertThat(actualizada.getNombre()).isEqualTo("ESCALA_DESEMPENO");
+        assertThat(actualizada.getDescripcion()).isEqualTo("Tres niveles actualizados");
+        assertThat(actualizada.getItems())
+                .extracting(ItemOpcionDTO::getId)
+                .containsExactly(itemRegular.getId(), itemBueno.getId(), itemMalo.getId());
+        assertThat(actualizada.getItems())
+                .extracting(ItemOpcionDTO::getOrden)
+                .containsExactly(1, 2, 3);
+        assertThat(actualizada.getItems())
+                .extracting(ItemOpcionDTO::getDescripcion)
+                .containsExactly("Insuficiente", "Aceptable", "Excelente");
+
+        assertThat(itemRegular.getOrden()).isEqualTo(1);
+        assertThat(itemRegular.getDescripcion()).isEqualTo("Insuficiente");
+        assertThat(itemBueno.getOrden()).isEqualTo(2);
+        assertThat(itemBueno.getDescripcion()).isEqualTo("Aceptable");
+        assertThat(itemMalo.getOrden()).isEqualTo(3);
+        assertThat(itemMalo.getDescripcion()).isEqualTo("Excelente");
+
+        OpcionRespuestaDTO conNombreIgual = gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(),
+                "  ESCALA_DESEMPENO  ",
+                "Descripción con nombre igual",
+                actualizada.getItems()
+        ));
+        assertThat(conNombreIgual.getNombre()).isEqualTo("ESCALA_DESEMPENO");
+        assertThat(conNombreIgual.getDescripcion()).isEqualTo("Descripción con nombre igual");
+    }
+
+    @Test
+    void actualizarFallaSiOpcionRespuestaNoExisteOEstaDadaDeBajaLogica() {
+        OpcionRespuesta eliminada = guardar("OPCION_BAJA", "Dada de baja", true,
+                item(1, "Sí"),
+                item(2, "No"));
+
+        OpcionRespuestaDTO inexistente = new OpcionRespuestaDTO(
+                999L,
+                null,
+                "Nueva descripción",
+                List.of(new ItemOpcionDTO(1L, 1, "Sí"), new ItemOpcionDTO(2L, 2, "No"))
+        );
+        OpcionRespuestaDTO sobreEliminada = new OpcionRespuestaDTO(
+                eliminada.getId(),
+                null,
+                "Nueva descripción",
+                List.of(
+                        new ItemOpcionDTO(eliminada.getItems().get(0).getId(), 1, "Sí"),
+                        new ItemOpcionDTO(eliminada.getItems().get(1).getId(), 2, "No")
+                )
+        );
+
+        assertThatThrownBy(() -> gestor.actualizar(inexistente))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+        assertThatThrownBy(() -> gestor.actualizar(sobreEliminada))
+                .isInstanceOf(RecursoActualmenteEliminadoException.class);
+    }
+
+    @Test
+    void actualizarConservaNombreSiEsBlancoORechazaConIllegalArgumentSiIntentaCambiarse() {
+        OpcionRespuesta original = guardar("VERDADERO_FALSO", "Descripción inicial", false,
+                item(1, "Verdadero"),
+                item(2, "Falso"));
+        List<ItemOpcionDTO> items = List.of(
+                new ItemOpcionDTO(original.getItems().get(0).getId(), 1, "Verdadero"),
+                new ItemOpcionDTO(original.getItems().get(1).getId(), 2, "Falso")
+        );
+
+        OpcionRespuestaDTO conNombreBlanco = gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), "   ", "Descripción con nombre blanco", items));
+        assertThat(conNombreBlanco.getNombre()).isEqualTo("VERDADERO_FALSO");
+
+        assertThatThrownBy(() -> gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), "OTRO_NOMBRE", "Intento cambio nombre", items)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), "verdadero_falso", "Intento cambio mayúsculas", items)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(gestor.buscarPorId(original.getId()).getNombre()).isEqualTo("VERDADERO_FALSO");
+    }
+
+    @Test
+    void actualizarRechazaAgregarQuitarRepetirOEnviarIdsAjenosDeItemsSinAlterarElEstado() {
+        OpcionRespuesta original = guardar("ESCALA_TRES", "Tres niveles", false,
+                item(1, "Bajo"),
+                item(2, "Medio"),
+                item(3, "Alto"));
+        OpcionRespuesta otra = guardar("OTRA_OPCION", "Otra plantilla", false,
+                item(1, "Sí"),
+                item(2, "No"));
+
+        Long id1 = original.getItems().get(0).getId();
+        Long id2 = original.getItems().get(1).getId();
+        Long id3 = original.getItems().get(2).getId();
+        Long idAjeno = otra.getItems().get(0).getId();
+
+        // Quitar un ítem (quedan 2 en vez de 3)
+        assertThatThrownBy(() -> gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), null, "Menos ítems",
+                List.of(new ItemOpcionDTO(id1, 1, "Bajo"), new ItemOpcionDTO(id2, 2, "Medio")))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Agregar un ítem (4 en vez de 3)
+        assertThatThrownBy(() -> gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), null, "Más ítems",
+                List.of(
+                        new ItemOpcionDTO(id1, 1, "Bajo"),
+                        new ItemOpcionDTO(id2, 2, "Medio"),
+                        new ItemOpcionDTO(id3, 3, "Alto"),
+                        new ItemOpcionDTO(999L, 4, "Muy alto")))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Repetir un ID manteniendo la cantidad
+        assertThatThrownBy(() -> gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), null, "ID repetido",
+                List.of(
+                        new ItemOpcionDTO(id1, 1, "Bajo"),
+                        new ItemOpcionDTO(id1, 2, "Medio"),
+                        new ItemOpcionDTO(id2, 3, "Alto")))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Enviar un ID perteneciente a otra opción de respuesta manteniendo la cantidad
+        assertThatThrownBy(() -> gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), null, "ID ajeno",
+                List.of(
+                        new ItemOpcionDTO(id1, 1, "Bajo"),
+                        new ItemOpcionDTO(id2, 2, "Medio"),
+                        new ItemOpcionDTO(idAjeno, 3, "Alto")))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Enviar un ID nulo
+        assertThatThrownBy(() -> gestor.actualizar(new OpcionRespuestaDTO(
+                original.getId(), null, "ID nulo",
+                List.of(
+                        new ItemOpcionDTO(id1, 1, "Bajo"),
+                        new ItemOpcionDTO(id2, 2, "Medio"),
+                        new ItemOpcionDTO(null, 3, "Alto")))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        OpcionRespuestaDTO intacta = gestor.buscarPorId(original.getId());
+        assertThat(intacta.getDescripcion()).isEqualTo("Tres niveles");
+        assertThat(intacta.getItems())
+                .extracting(ItemOpcionDTO::getDescripcion)
+                .containsExactly("Bajo", "Medio", "Alto");
+    }
+
     private OpcionRespuesta guardar(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
         OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
         for (ItemOpcion item : items) {
@@ -229,6 +400,10 @@ class GestorOpcionesRespuestaTests {
             }
             store.put(opcionRespuesta.getId(), opcionRespuesta);
             return opcionRespuesta;
+        }
+
+        @Override
+        public void sincronizar() {
         }
 
         private static boolean contiene(String valor, String buscado) {
