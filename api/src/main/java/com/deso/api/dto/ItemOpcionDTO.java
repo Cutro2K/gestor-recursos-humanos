@@ -1,6 +1,5 @@
 package com.deso.api.dto;
 
-import com.deso.api.validation.OnModificacion;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -16,8 +15,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ItemOpcionDTO {
 
-    @NotNull(groups = OnModificacion.class, message = "El ID del ítem de opción es obligatorio.")
-    @Positive(groups = OnModificacion.class, message = "El ID del ítem de opción debe ser positivo.")
+    @Positive(message = "El ID del ítem de opción debe ser positivo.")
     private Long id;
 
     @NotNull(message = "El orden del ítem de opción es obligatorio.")

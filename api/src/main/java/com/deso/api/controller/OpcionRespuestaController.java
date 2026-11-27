@@ -1,20 +1,24 @@
 package com.deso.api.controller;
 
+import com.deso.api.dto.ErrorResponseDTO;
+import com.deso.api.dto.ItemOpcionDTO;
 import com.deso.api.dto.ListadoOpcionRespuestaDTO;
 import com.deso.api.dto.OpcionRespuestaDTO;
 import com.deso.api.exception.CredencialesInvalidasException;
 import com.deso.api.security.EmisorTokens;
 import com.deso.api.service.GestorAutenticacion;
 import com.deso.api.service.GestorOpcionesRespuesta;
-import com.deso.api.validation.OnAlta;
-import com.deso.api.validation.OnModificacion;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +31,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Controlador REST para la gestión del catálogo de Opciones de Respuesta (/api/opciones-respuesta).
@@ -54,8 +65,15 @@ public class OpcionRespuestaController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<OpcionRespuestaDTO> darDeAlta(
-            @Validated(OnAlta.class) @RequestBody OpcionRespuestaDTO request) {
+    public ResponseEntity<?> darDeAlta(
+            @Valid @RequestBody OpcionRespuestaDTO request,
+            BindingResult bindingResult,
+            HttpServletRequest httpRequest) {
+        Map<String, String> errores = recolectarErroresValidacion(request, bindingResult, true);
+        if (!errores.isEmpty()) {
+            return respuestaErroresValidacion(errores, httpRequest);
+        }
+
         OpcionRespuestaDTO creada = gestorOpcionesRespuesta.darDeAlta(request);
         URI location = URI.create("/api/opciones-respuesta/" + creada.getId());
         return ResponseEntity.created(location).body(creada);
@@ -83,11 +101,18 @@ public class OpcionRespuestaController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public OpcionRespuestaDTO modificar(
+    public ResponseEntity<?> modificar(
             @PathVariable @Positive(message = "El ID de la opción de respuesta debe ser positivo.") Long id,
-            @Validated(OnModificacion.class) @RequestBody OpcionRespuestaDTO request) {
+            @Valid @RequestBody OpcionRespuestaDTO request,
+            BindingResult bindingResult,
+            HttpServletRequest httpRequest) {
+        Map<String, String> errores = recolectarErroresValidacion(request, bindingResult, false);
+        if (!errores.isEmpty()) {
+            return respuestaErroresValidacion(errores, httpRequest);
+        }
+
         request.setId(id);
-        return gestorOpcionesRespuesta.actualizar(request);
+        return ResponseEntity.ok(gestorOpcionesRespuesta.actualizar(request));
     }
 
     @DeleteMapping("/{id}")
@@ -99,5 +124,87 @@ public class OpcionRespuestaController {
                 .orElseThrow(() -> new CredencialesInvalidasException("La sesión no es válida o venció"));
         gestorOpcionesRespuesta.eliminarLogicamente(id, datos.sujetoId());
         return ResponseEntity.noContent().build();
+    }
+
+    private Map<String, String> recolectarErroresValidacion(
+            OpcionRespuestaDTO request,
+            BindingResult bindingResult,
+            boolean exigirNombre) {
+        Map<String, String> errores = new HashMap<>();
+        for (FieldError error : bindingResult.getFieldErrors()) {
+            errores.put(error.getField(), error.getDefaultMessage());
+        }
+
+        if (exigirNombre && (request.getNombre() == null || request.getNombre().isBlank())) {
+            errores.putIfAbsent("nombre", "El nombre es obligatorio.");
+        }
+
+        String errorItems = validarItems(request.getItems());
+        if (errorItems != null) {
+            errores.putIfAbsent("items", errorItems);
+        }
+
+        return errores;
+    }
+
+    /**
+     * Valida que la lista de ítems de opción tenga órdenes consecutivos 1..N comenzando en 1
+     * sin huecos ni repetidos y que no repita descripciones ignorando espacios extremos y mayúsculas/minúsculas.
+     */
+    private String validarItems(List<ItemOpcionDTO> items) {
+        if (items == null || items.size() < 2) {
+            return null;
+        }
+
+        List<String> mensajes = new ArrayList<>();
+
+        boolean todosConOrdenPositivo = items.stream()
+                .allMatch(item -> item != null && item.getOrden() != null && item.getOrden() > 0);
+        if (todosConOrdenPositivo) {
+            int n = items.size();
+            Set<Integer> ordenesVistos = new HashSet<>();
+            boolean secuenciaValida = true;
+            for (ItemOpcionDTO item : items) {
+                int orden = item.getOrden();
+                if (orden < 1 || orden > n || !ordenesVistos.add(orden)) {
+                    secuenciaValida = false;
+                    break;
+                }
+            }
+            if (!secuenciaValida) {
+                mensajes.add("El orden de visualización de los ítems de opción debe ser consecutivo comenzando en 1 sin saltos ni repeticiones.");
+            }
+        }
+
+        Set<String> descripcionesVistas = new HashSet<>();
+        boolean descripcionDuplicada = false;
+        for (ItemOpcionDTO item : items) {
+            if (item != null && item.getDescripcion() != null && !item.getDescripcion().isBlank()) {
+                String clave = item.getDescripcion().strip().toLowerCase(Locale.ROOT);
+                if (!descripcionesVistas.add(clave)) {
+                    descripcionDuplicada = true;
+                    break;
+                }
+            }
+        }
+        if (descripcionDuplicada) {
+            mensajes.add("La descripción de los ítems de opción no puede repetirse dentro de la misma opción de respuesta.");
+        }
+
+        return mensajes.isEmpty() ? null : String.join(" ", mensajes);
+    }
+
+    private ResponseEntity<ErrorResponseDTO> respuestaErroresValidacion(
+            Map<String, String> errores,
+            HttpServletRequest request) {
+        ErrorResponseDTO errorDto = new ErrorResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Argumentos no validos",
+                "Los datos enviados contienen errores en uno o más campos",
+                request.getRequestURI(),
+                errores
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
     }
 }
