@@ -22,9 +22,6 @@ api/logs/
 # Local agent instructions
 /AGENTS.md
 /frontend/AGENTS.md
-/.scratch/
-/GLOSSARY.md
-/docs/
 
 # Notas locales de aprendizaje (VibeWise)
 .vibe-wise/
