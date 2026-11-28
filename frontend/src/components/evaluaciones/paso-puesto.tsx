@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Modal, Spinner, Stack, Surface } from "react-ui-lib";
+import { Button, Modal, Stack, Surface } from "react-ui-lib";
 import { useErrorFeedback } from "@/components/ui/use-error-feedback";
 import { consultarCompetenciasPuesto, listarPuestos } from "@/service/evaluaciones";
 import type { CompetenciaPuesto, Puesto } from "@/service/evaluaciones";
@@ -73,6 +73,7 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
+        setCompetencias(null);
         reportError(error, {
           title: "No pudimos cargar las competencias",
           fallback: "No pudimos cargar las competencias del puesto.",
@@ -84,16 +85,20 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
     return () => controller.abort();
   }, [puestoId, reportError]);
 
+  // Al cambiar de puesto, la tabla anterior queda atenuada hasta que llegan las competencias nuevas:
+  // así el contenedor solo cambia de altura una vez, en lugar de vaciarse y volver a crecer.
   function elegirPuesto(id: string) {
     setPuestoId(id);
     setErrorPuesto(null);
-    setCompetencias(null);
+    if (!id) setCompetencias(null);
     setCargandoCompetencias(Boolean(id));
   }
 
   const puesto = puestos.find((p) => String(p.id) === puestoId) ?? null;
-  const noEvaluables = competencias?.filter((c) => !c.evaluable) ?? [];
-  const sinCompetencias = competencias !== null && competencias.length === 0;
+  // Mientras cargan, las competencias en pantalla son las del puesto anterior: no se evalúan.
+  const vigentes = cargandoCompetencias ? null : competencias;
+  const noEvaluables = vigentes?.filter((c) => !c.evaluable) ?? [];
+  const sinCompetencias = vigentes !== null && vigentes.length === 0;
 
   /** Paso 10 y flujo 10.A. */
   function siguiente() {
@@ -101,7 +106,7 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
       setErrorPuesto("Debe seleccionar una función o puesto.");
       return;
     }
-    if (competencias === null || sinCompetencias || noEvaluables.length > 0) return;
+    if (vigentes === null || sinCompetencias || noEvaluables.length > 0) return;
     onSiguiente(puesto);
   }
 
@@ -113,7 +118,9 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
       {feedback}
 
       <Surface as="section" bordered padding="lg" layout={false} aria-labelledby="titulo-puesto">
-        <Stack gap="lg">
+        {/* layout={false}: al aparecer las competencias el contenedor crece; la animación de layout
+            escalaba el contenido y parecía que toda la tarjeta se volvía a cargar. */}
+        <Stack gap="lg" layout={false}>
           <h2 id="titulo-puesto" className="font-semibold">Función o puesto a evaluar</h2>
 
           <div className={styles.campo}>
@@ -150,20 +157,22 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
             )}
           </div>
 
-          {puestoId && (
+          {puestoId && competencias !== null && (
             <div>
               <h3 className="mb-2 text-sm font-semibold">Competencias requeridas</h3>
-              {cargandoCompetencias || competencias === null ? (
-                <div className={styles.estado} role="status">
-                  <Spinner size="sm" aria-hidden="true" />
-                  <span>Cargando competencias…</span>
-                </div>
-              ) : sinCompetencias ? (
+              {competencias.length === 0 ? (
                 <p className={styles.vacio}>
                   Esta función o puesto no tiene competencias asociadas, así que no puede evaluarse.
                 </p>
               ) : (
-                <div className={styles.tableScroll} style={{ margin: 0 }} tabIndex={0} aria-label="Competencias requeridas">
+                <div
+                  className={styles.tableScroll}
+                  style={{ margin: 0 }}
+                  tabIndex={0}
+                  aria-label="Competencias requeridas"
+                  data-cargando={cargandoCompetencias}
+                  aria-busy={cargandoCompetencias}
+                >
                   <table className={styles.table}>
                     <thead>
                       <tr>
@@ -191,7 +200,7 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
         <Button variant="secondary" onClick={onVolver}>
           Volver
         </Button>
-        <Button onClick={siguiente} disabled={cargandoCompetencias || sinCompetencias}>
+        <Button onClick={siguiente} disabled={sinCompetencias}>
           Siguiente
         </Button>
       </div>
