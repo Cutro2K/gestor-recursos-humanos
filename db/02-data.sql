@@ -19,7 +19,6 @@ TRUNCATE TABLE
     modelo_competencia,
     modelo_evaluacion,
     evaluacion,
-    configuracion_cuestionario,
     pregunta_item_opcion,
     pregunta,
     item_opcion,
@@ -145,18 +144,11 @@ VALUES
     (4, 7, 10.00);
 
 -- =============================================================================
--- 11. CONFIGURACION_CUESTIONARIO
+-- 11. EVALUACION
 -- =============================================================================
-INSERT INTO configuracion_cuestionario (vigencia_desde, vigencia_hasta, instrucciones, cantidad_maxima_accesos, minutos_maximos_activo, minutos_maximos_resolucion, preguntas_por_bloque, activa)
+INSERT INTO evaluacion (consultor_id, puesto_id, fecha_creacion, version_modelo, nombre_archivo_excel)
 VALUES
-    ('2026-01-01 00:00:00', NULL, 'Bienvenido al sistema de evaluación de Capit@l Humano. Lea atentamente cada pregunta. Una vez completado un bloque no podrá retroceder.', 3, 1440, 60, 2, TRUE);
-
--- =============================================================================
--- 12. EVALUACION
--- =============================================================================
-INSERT INTO evaluacion (consultor_id, puesto_id, configuracion_id, fecha_creacion, version_modelo, nombre_archivo_excel)
-VALUES
-    (1, 1, 1, CURRENT_TIMESTAMP, 'v1.0-2026', '2026-10-29-10-00-DesarrolladorJavaSenior.xls');
+    (1, 1, CURRENT_TIMESTAMP, 'v1.0-2026', '2026-10-29-10-00-DesarrolladorJavaSenior.xls');
 
 -- =============================================================================
 -- 13. MODELO_EVALUACION (Snapshot raíz de la evaluación 1)

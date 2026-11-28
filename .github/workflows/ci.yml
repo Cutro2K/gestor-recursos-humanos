@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  conventions:
+    name: Convenciones de Rama y PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar nombre de la rama (Conventional Branch)
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [[ "$BASE_REF" == "main" && "$HEAD_REF" == "develop" ]]; then
+            echo "Rama válida para entrega: develop -> main"
+            exit 0
+          fi
+
+          if LC_ALL=C bash -c '[[ "$1" =~ ^(feature|feat|bugfix|fix|hotfix|core|chore|docs)/[a-z0-9]+([.-][a-z0-9]+)*$ ]]' _ "$HEAD_REF"; then
+            echo "Nombre de rama válido: $HEAD_REF"
+          else
+            echo "::error::El nombre de la rama '$HEAD_REF' no cumple Conventional Branch."
+            echo "Formato esperado: <tipo>/<descripcion> en minúsculas y kebab-case."
+            echo "Prefijos válidos: feature/, feat/, bugfix/, fix/, hotfix/, core/, chore/, docs/"
+            echo "Ejemplos: feature/cu09-alta-puesto, fix/cu16-19-correcciones-factores, core/script-tablas"
+            exit 1
+          fi
+
+      - name: Validar título del Pull Request (Conventional Commits)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$PR_TITLE" == *$'\n'* || "$PR_TITLE" == *$'\r'* ]]; then
+            echo "::error::El título del PR debe ser de una sola línea."
+            exit 1
+          fi
+
+          if [[ "$PR_TITLE" != *": "* ]]; then
+            echo "::error::El título del PR '$PR_TITLE' no cumple Conventional Commits (falta ': ' luego del tipo/alcance)."
+            echo "Formato esperado: <tipo>[alcance opcional][!]: <descripción>"
+            echo "Ejemplo: feat(puestos): implementar alta de puesto (CU 09)"
+            exit 1
+          fi
+
+          PREFIX="${PR_TITLE%%: *}"
+          DESCRIPTION="${PR_TITLE#*: }"
+
+          if ! LC_ALL=C bash -c '[[ "$1" =~ ^(feat|fix|docs|refactor|test|style|chore|build|perf|ci|revert)(\([a-z0-9]+(-[a-z0-9]+)*\))?!?$ ]]' _ "$PREFIX"; then
+            echo "::error::El prefijo '$PREFIX' del título del PR no cumple Conventional Commits."
+            echo "Tipos válidos: feat, fix, docs, refactor, test, style, chore, build, perf, ci, revert"
+            echo "Alcance opcional en minúsculas y kebab-case entre paréntesis, por ejemplo: feat(opciones-respuesta):"
+            exit 1
+          fi
+
+          if [[ -z "$DESCRIPTION" || "$DESCRIPTION" == " "* ]]; then
+            echo "::error::El título del PR debe incluir una descripción inmediatamente después de ': '."
+            exit 1
+          fi
+
+          echo "Título de PR válido: $PR_TITLE"
+
+  backend:
+    name: Backend (Spring Boot + Maven)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 25 y caché de Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: api/pom.xml
+
+      - name: Compilar proyecto y tests (Maven test-compile)
+        run: ./mvnw -B test-compile
+
+      - name: Ejecutar tests del backend (Maven test)
+        run: ./mvnw -B test
+
+  frontend:
+    name: Frontend (Next.js + TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 24 y caché de npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias limpias (npm ci)
+        run: npm ci
+
+      - name: Generar tipos de rutas de Next.js
+        run: npx next typegen
+
+      - name: Verificar tipos de TypeScript (tsc)
+        run: npx tsc --noEmit
+
+      - name: Ejecutar linter (ESLint)
+        run: npm run lint
+
+      - name: Ejecutar tests unitarios
+        run: npm test
+
+      - name: Verificar build de producción (Next.js)
+        run: npm run build

@@ -31,8 +31,11 @@ export async function apiRequest<T = unknown>(
 
   let response: Response;
   try {
+    // La API vive en otro origen (puerto 8080): sin "include" el navegador no guarda
+    // las cookies de sesión que devuelve el login ni las manda en las peticiones siguientes.
     response = await fetch(`${API_BASE_URL}/${path.replace(/^\/+/, "")}`, {
       cache: "no-store",
+      credentials: "include",
       ...request,
       headers,
       body: json !== undefined ? JSON.stringify(json) : request.body,
