@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Modal, Surface, useToast } from "react-ui-lib";
+import { Button, Modal, Stack, Surface, useToast } from "react-ui-lib";
 import { ApiError } from "@/service/api";
 import type { Candidato } from "@/service/candidatos";
 import { descargarClavesExcel, evaluarCandidatos } from "@/service/evaluaciones";
@@ -141,7 +141,7 @@ export function PasoConfirmacion({ encabezado, puesto, candidatos, onVolver }: P
   }
 
   return (
-    <>
+    <Stack gap="lg" layout={false}>
       {encabezado}
       <Surface as="section" bordered padding="none" layout={false} aria-labelledby="titulo-confirmacion">
         <div className={styles.encabezadoGrilla}>
@@ -237,6 +237,6 @@ export function PasoConfirmacion({ encabezado, puesto, candidatos, onVolver }: P
           El archivo se llamará <strong>{resultado?.nombreArchivoExcel}</strong>.
         </p>
       </Modal>
-    </>
+    </Stack>
   );
 }

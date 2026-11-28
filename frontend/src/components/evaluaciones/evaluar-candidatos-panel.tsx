@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Stack } from "react-ui-lib";
 import { PageHeader } from "@/components/ui/page-header";
 import { getSection } from "@/config/sections";
 import type { Candidato } from "@/service/candidatos";
@@ -51,8 +50,9 @@ export function EvaluarCandidatosPanel() {
     </>
   );
 
+  // Sin contenedor propio: así el error de un paso queda centrado en la página como en las demás secciones.
   return (
-    <Stack gap="lg" layout={false}>
+    <>
       {paso === "candidatos" && (
         <PasoCandidatos
           encabezado={encabezado}
@@ -80,6 +80,6 @@ export function EvaluarCandidatosPanel() {
           onVolver={() => setPaso("puesto")}
         />
       )}
-    </Stack>
+    </>
   );
 }

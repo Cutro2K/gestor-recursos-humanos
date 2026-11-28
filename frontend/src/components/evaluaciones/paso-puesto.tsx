@@ -108,7 +108,7 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
   if (hasRetryError) return feedback;
 
   return (
-    <>
+    <Stack gap="lg" layout={false}>
       {encabezado}
       {feedback}
 
@@ -212,6 +212,6 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
           ))}
         </ul>
       </Modal>
-    </>
+    </Stack>
   );
 }

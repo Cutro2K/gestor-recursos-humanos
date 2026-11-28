@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Modal, Spinner, Surface, TextField, useToast } from "react-ui-lib";
+import { Button, Modal, Spinner, Stack, Surface, TextField, useToast } from "react-ui-lib";
 import { CriteriosBusqueda } from "@/components/ui/criterios-busqueda";
 import type { CriterioAplicado } from "@/components/ui/criterios-busqueda";
 import { useErrorFeedback } from "@/components/ui/use-error-feedback";
@@ -223,7 +223,7 @@ export function PasoCandidatos({ encabezado, aEvaluar, onCambiarAEvaluar, onSigu
   if (hasRetryError) return feedback;
 
   return (
-    <>
+    <Stack gap="lg" layout={false}>
       {encabezado}
       {feedback}
 
@@ -439,6 +439,6 @@ export function PasoCandidatos({ encabezado, aEvaluar, onCambiarAEvaluar, onSigu
           Quitá a esos candidatos de la grilla Candidatos a evaluar para continuar.
         </p>
       </Modal>
-    </>
+    </Stack>
   );
 }
