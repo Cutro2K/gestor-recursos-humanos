@@ -1,5 +1,6 @@
 package com.deso.api.model.entity;
 
+import com.deso.api.config.PropiedadesCuestionario;
 import com.deso.api.model.enums.EstadoCuestionario;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(
@@ -82,4 +84,22 @@ public class Cuestionario {
     // Relación One-to-Many: El cuestionario se divide en bloques ordenados de preguntas
     @OneToMany(mappedBy = "cuestionario", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BloqueCuestionario> bloques = new ArrayList<>();
+
+    public Cuestionario(Evaluacion evaluacion, Candidato candidato, String claveIngreso, PropiedadesCuestionario configuracion) {
+        this.evaluacion = evaluacion;
+        this.candidato = candidato;
+        this.claveIngreso = claveIngreso;
+        aplicarConfiguracion(configuracion);
+    }
+
+    /**
+     * Aplica al cuestionario los parámetros operativos leídos desde application.properties.
+     */
+    public void aplicarConfiguracion(PropiedadesCuestionario configuracion) {
+        Objects.requireNonNull(configuracion, "La configuración del cuestionario es obligatoria");
+        this.cantidadMaximaAccesos = configuracion.cantidadMaximaAccesos();
+        this.minutosMaximosActivo = configuracion.minutosMaximosActivo();
+        this.minutosMaximosResolucion = configuracion.minutosMaximosResolucion();
+        this.preguntasPorBloque = configuracion.preguntasPorBloque();
+    }
 }
