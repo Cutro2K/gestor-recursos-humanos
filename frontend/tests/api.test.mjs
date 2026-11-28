@@ -8,6 +8,7 @@ test("GET joins paths, keeps custom headers and reads JSON", async () => {
   mock.method(globalThis, "fetch", async (url, options) => {
     assert.equal(url, `${API_BASE_URL}/competencias?nombre=equipo`);
     assert.equal(options.cache, "no-store");
+    assert.equal(options.credentials, "include");
     assert.equal(options.headers.get("Accept"), "application/json");
     assert.equal(options.headers.get("Authorization"), "Bearer ejemplo");
     return Response.json([{ id: 1, nombre: "Trabajo en equipo" }]);
