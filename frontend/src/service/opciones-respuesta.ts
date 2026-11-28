@@ -1,0 +1,184 @@
+import { apiRequest } from "./api";
+
+export type FiltrosOpcionesRespuesta = {
+  nombre: string;
+};
+
+export type ItemOpcion = {
+  id?: number | null;
+  orden: number;
+  descripcion: string;
+};
+
+export type ListadoOpcionRespuestaDTO = {
+  id: number;
+  nombre: string;
+  descripcion: string;
+};
+
+export type OpcionRespuestaDetalle = ListadoOpcionRespuestaDTO & {
+  items: ItemOpcion[];
+};
+
+export type ListadoOpcionesRespuesta = {
+  opciones: ListadoOpcionRespuestaDTO[];
+  /** Offset de la página siguiente, o null si esta fue la última. */
+  siguienteOffset: number | null;
+};
+
+export type UsoOpcionRespuesta = {
+  enUso: boolean;
+};
+
+export type CrearOpcionRespuestaPayload = {
+  nombre: string;
+  descripcion: string;
+  items: Array<{
+    orden: number;
+    descripcion: string;
+  }>;
+};
+
+export type ModificarOpcionRespuestaPayload = {
+  nombre?: string;
+  descripcion: string;
+  items: Array<{
+    id: number;
+    orden: number;
+    descripcion: string;
+  }>;
+};
+
+const CANTIDAD_POR_PAGINA = 50;
+
+/**
+ * Busca opciones de respuesta activas filtrando opcionalmente por nombre (paginado por offset/cantidad).
+ * Endpoint: GET /api/opciones-respuesta (CU 24)
+ */
+export async function listarOpcionesRespuesta(
+  filtros: FiltrosOpcionesRespuesta,
+  desde: number | null,
+  signal?: AbortSignal,
+): Promise<ListadoOpcionesRespuesta> {
+  const offset = desde !== null && desde >= 0 ? desde : 0;
+  const query = new URLSearchParams({
+    offset: String(offset),
+    cantidad: String(CANTIDAD_POR_PAGINA),
+  });
+
+  if (filtros.nombre.trim()) {
+    query.set("nombre", filtros.nombre.trim());
+  }
+
+  const resultado = await apiRequest<ListadoOpcionRespuestaDTO[]>(
+    `opciones-respuesta?${query}`,
+    { signal },
+  );
+
+  if (!resultado) {
+    throw new Error("No recibimos el listado de opciones de respuesta.");
+  }
+
+  const opciones: ListadoOpcionRespuestaDTO[] = resultado.map((item) => ({
+    id: item.id,
+    nombre: item.nombre,
+    descripcion: item.descripcion,
+  }));
+
+  const siguienteOffset =
+    opciones.length === CANTIDAD_POR_PAGINA ? offset + opciones.length : null;
+
+  return { opciones, siguienteOffset };
+}
+
+/**
+ * Obtiene el detalle de una opción de respuesta activa por su ID, incluyendo sus ítems de opción ordenados.
+ * Endpoint: GET /api/opciones-respuesta/{id} (CU 21 / CU 22 / CU 30)
+ */
+export async function obtenerOpcionRespuestaPorId(
+  id: number,
+  signal?: AbortSignal,
+): Promise<OpcionRespuestaDetalle> {
+  const resultado = await apiRequest<OpcionRespuestaDetalle>(
+    `opciones-respuesta/${id}`,
+    { signal },
+  );
+  if (!resultado) {
+    throw new Error(`No se encontró la opción de respuesta #${id}.`);
+  }
+  return resultado;
+}
+
+/**
+ * Indica si la opción de respuesta tiene preguntas activas asociadas. El CU 31 lo constata
+ * antes de pedir la confirmación de la baja.
+ * Endpoint: GET /api/opciones-respuesta/{id}/uso (CU 31)
+ */
+export async function consultarUsoOpcionRespuesta(
+  id: number,
+  signal?: AbortSignal,
+): Promise<UsoOpcionRespuesta> {
+  const resultado = await apiRequest<UsoOpcionRespuesta>(`opciones-respuesta/${id}/uso`, {
+    signal,
+  });
+  if (!resultado || typeof resultado.enUso !== "boolean") {
+    throw new Error("No pudimos verificar si la opción de respuesta está en uso.");
+  }
+  return resultado;
+}
+
+/**
+ * Da de alta una nueva opción de respuesta con su lista de ítems de opción.
+ * Endpoint: POST /api/opciones-respuesta (CU 29)
+ */
+export async function crearOpcionRespuesta(
+  datos: CrearOpcionRespuestaPayload,
+  signal?: AbortSignal,
+): Promise<OpcionRespuestaDetalle> {
+  const resultado = await apiRequest<OpcionRespuestaDetalle>("opciones-respuesta", {
+    method: "POST",
+    json: datos,
+    signal,
+  });
+  if (!resultado) {
+    throw new Error("No se pudo registrar la opción de respuesta.");
+  }
+  return resultado;
+}
+
+/**
+ * Modifica la descripción y los ítems de opción existentes de una opción de respuesta activa.
+ * Endpoint: PUT /api/opciones-respuesta/{id} (CU 30)
+ */
+export async function modificarOpcionRespuesta(
+  id: number,
+  datos: ModificarOpcionRespuestaPayload,
+  signal?: AbortSignal,
+): Promise<OpcionRespuestaDetalle> {
+  const resultado = await apiRequest<OpcionRespuestaDetalle>(
+    `opciones-respuesta/${id}`,
+    {
+      method: "PUT",
+      json: datos,
+      signal,
+    },
+  );
+  if (!resultado) {
+    throw new Error("No se pudo modificar la opción de respuesta.");
+  }
+  return resultado;
+}
+
+/**
+ * Realiza la baja lógica de una opción de respuesta activa si no está en uso por preguntas activas.
+ * Endpoint: DELETE /api/opciones-respuesta/{id} (CU 31)
+ */
+export async function eliminarOpcionRespuesta(
+  id: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  await apiRequest<void>(`opciones-respuesta/${id}`, {
+    method: "DELETE",
+    signal,
+  });
+}

@@ -25,6 +25,9 @@ public class EmisorTokens {
     public static final String TIPO_ACCESS = "access";
     public static final String TIPO_REFRESH = "refresh";
 
+    /** Datos verificados de un access token vigente. */
+    public record DatosAccess(long sujetoId, String sujeto, String rol) {}
+
     /** Datos que el refresh token necesita para encontrar y validar su sesión. */
     public record DatosRefresh(long sesionId, long seq, String sujeto, String rol) {}
 
@@ -52,6 +55,27 @@ public class EmisorTokens {
                 .claim("sesionId", sesionId)
                 .claim("seq", seq)
                 .expirationTime(Date.from(expira)));
+    }
+
+    /**
+     * Lee un access token vigente. Devuelve vacío si es nulo, está malformado, venció,
+     * la firma o el emisor no coinciden, el tipo no es {@code access}, o faltan {@code sub}
+     * numérico o {@code rol}.
+     */
+    public Optional<DatosAccess> leerAccess(String token) {
+        return verificar(token, TIPO_ACCESS, false).flatMap(claims -> {
+            try {
+                String sujeto = claims.getSubject();
+                String rol = claims.getStringClaim("rol");
+                if (sujeto == null || rol == null || rol.isBlank()) {
+                    return Optional.empty();
+                }
+                long sujetoId = Long.parseLong(sujeto);
+                return Optional.of(new DatosAccess(sujetoId, sujeto, rol));
+            } catch (ParseException | NumberFormatException e) {
+                return Optional.empty();
+            }
+        });
     }
 
     /**

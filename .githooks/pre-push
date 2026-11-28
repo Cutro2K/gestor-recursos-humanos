@@ -1,0 +1,66 @@
+#!/usr/bin/env sh
+# Hook pre-push: ejecuta la validación completa de nombre de rama, backend y frontend
+# antes de enviar commits al repositorio remoto.
+# Para activarlo en tu clon local: ./scripts/configurar-githooks.sh
+set -eu
+
+ZERO_SHA="0000000000000000000000000000000000000000"
+
+# Si Git invoca el hook por stdin, omitir chequeos cuando solo se están borrando ramas remotas.
+if [ ! -t 0 ]; then
+	hay_commits_a_subir=0
+	while read -r _local_ref local_sha _remote_ref _remote_sha; do
+		if [ -n "${local_sha:-}" ] && [ "$local_sha" != "$ZERO_SHA" ]; then
+			hay_commits_a_subir=1
+		fi
+	done
+	if [ "$hay_commits_a_subir" -eq 0 ]; then
+		exit 0
+	fi
+fi
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+BRANCH="$(git symbolic-ref --quiet --short HEAD || true)"
+
+# 1. Validar nombre de la rama actual (salvo ramas troncales o detached HEAD)
+if [ -n "$BRANCH" ] && [ "$BRANCH" != "main" ] && [ "$BRANCH" != "develop" ]; then
+	if ! LC_ALL=C sh -c 'printf "%s\n" "$1" | grep -Eq "^(feature|feat|bugfix|fix|hotfix|core|chore|docs)/[a-z0-9]+([.-][a-z0-9]+)*$"' _ "$BRANCH"; then
+		echo "[pre-push] Error: el nombre de la rama '$BRANCH' no cumple Conventional Branch." >&2
+		echo "           Formato esperado: <tipo>/<descripcion> (ej. feature/cu09-alta-puesto)." >&2
+		exit 1
+	fi
+fi
+
+echo "============================================================"
+echo "[pre-push] 1/2 Verificando Backend (Spring Boot + Maven)..."
+echo "============================================================"
+(
+	cd "$ROOT_DIR/api"
+	echo "-> [Backend 1/2] ./mvnw -B test-compile"
+	./mvnw -B test-compile
+	echo "-> [Backend 2/2] ./mvnw -B test"
+	./mvnw -B test
+)
+
+echo "============================================================"
+echo "[pre-push] 2/2 Verificando Frontend (Next.js + TypeScript)..."
+echo "============================================================"
+(
+	cd "$ROOT_DIR/frontend"
+	echo "-> [Frontend 1/6] npm ci"
+	npm ci
+	echo "-> [Frontend 2/6] npx next typegen"
+	npx next typegen
+	echo "-> [Frontend 3/6] npx tsc --noEmit"
+	npx tsc --noEmit
+	echo "-> [Frontend 4/6] npm run lint"
+	npm run lint
+	echo "-> [Frontend 5/6] npm test"
+	npm test
+	echo "-> [Frontend 6/6] npm run build"
+	npm run build
+)
+
+echo "============================================================"
+echo "[pre-push] Todos los chequeos de Backend y Frontend pasaron."
+echo "============================================================"

@@ -1,0 +1,214 @@
+.theme {
+  --opcion-accent: var(--ui-accent);
+}
+
+.muted {
+  color: var(--ui-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.iconBox {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+}
+
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  transition: opacity 150ms ease;
+}
+
+/* Mientras llega una búsqueda nueva, la tabla anterior queda atenuada en vez de saltar a un spinner. */
+.tableScroll[data-cargando="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.tableScroll:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.table th {
+  padding: 13px 16px;
+  background: color-mix(in srgb, var(--ui-muted) 5%, var(--ui-surface));
+  color: var(--ui-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 14px 16px;
+  border-top: 1px solid var(--ui-border);
+  vertical-align: middle;
+}
+
+.opcionName {
+  display: block;
+  min-width: 160px;
+  font-weight: 600;
+}
+
+.opcionDescripcion {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 160px;
+  color: var(--ui-muted);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 56px 20px;
+  text-align: center;
+}
+
+.selectableRow {
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.selectableRow:hover {
+  background: color-mix(in srgb, var(--ui-accent) 4%, var(--ui-surface));
+}
+
+.selectedRow {
+  background: color-mix(in srgb, var(--ui-accent) 9%, var(--ui-surface));
+}
+
+.selectedRow:hover {
+  background: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-surface));
+}
+
+.radioCell {
+  width: 48px;
+  padding-right: 4px;
+  vertical-align: middle;
+}
+
+/* Recorta la barra mientras su altura se anima; el padding va adentro para que llegue a 0. */
+.selectionBarClip {
+  overflow: hidden;
+  border-bottom-left-radius: calc(var(--radius-2xl, 1rem) - 1px);
+  border-bottom-right-radius: calc(var(--radius-2xl, 1rem) - 1px);
+}
+
+.selectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.selectionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--ui-border);
+  background: color-mix(in srgb, var(--ui-accent) 4%, var(--ui-surface));
+}
+
+.fieldError {
+  margin: 0;
+  color: var(--ui-danger, #b32931);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.itemsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ui-muted) 3%, var(--ui-surface));
+}
+
+.itemsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itemRow,
+.itemRowFixed {
+  display: grid;
+  align-items: start;
+  gap: 10px;
+}
+
+.itemRow {
+  grid-template-columns: 108px minmax(0, 1fr) auto;
+}
+
+.itemRowFixed {
+  grid-template-columns: 108px minmax(0, 1fr);
+}
+
+.itemOrderCol,
+.itemDescCol {
+  min-width: 0;
+}
+
+.itemRemoveCol {
+  padding-top: 8px;
+}
+
+@media (max-width: 560px) {
+  .itemRow,
+  .itemRowFixed {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .itemRemoveCol {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 440px) {
+  .table td,
+  .table th {
+    padding: 12px;
+  }
+}
