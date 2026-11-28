@@ -31,11 +31,6 @@ public class Evaluacion {
     @JoinColumn(name = "puesto_id", nullable = false)
     private Puesto puesto;
 
-    // Relación Many-to-One: Configuración de cuestionarios vigente aplicada
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "configuracion_id", nullable = false)
-    private ConfiguracionCuestionario configuracion;
-
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 

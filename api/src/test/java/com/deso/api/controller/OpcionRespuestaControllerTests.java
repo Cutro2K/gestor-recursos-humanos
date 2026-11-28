@@ -1,0 +1,652 @@
+package com.deso.api.controller;
+
+import com.deso.api.dao.ConsultorDAO;
+import com.deso.api.dao.OpcionRespuestaDAO;
+import com.deso.api.model.entity.Consultor;
+import com.deso.api.model.entity.ItemOpcion;
+import com.deso.api.model.entity.OpcionRespuesta;
+import com.deso.api.security.EmisorTokens;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "spring.datasource.url=jdbc:h2:mem:opciones-respuesta-controller-tests",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa", "spring.datasource.password=",
+        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+        "spring.jpa.hibernate.ddl-auto=create-drop", "spring.jpa.show-sql=false",
+        "logging.file.name=target/opciones-respuesta-controller-tests.log"
+})
+class OpcionRespuestaControllerTests {
+
+    private static final HttpClient CLIENTE = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
+    @LocalServerPort
+    private int puerto;
+
+    @Autowired
+    private OpcionRespuestaDAO opcionRespuestaDAO;
+
+    @Autowired
+    private ConsultorDAO consultorDAO;
+
+    @Autowired
+    private EmisorTokens emisorTokens;
+
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    @Autowired
+    private JsonMapper json;
+
+    @BeforeEach
+    void setUp() {
+        limpiarBase();
+    }
+
+    @AfterEach
+    void limpiarBase() {
+        jdbc.update("delete from registro_auditoria");
+        jdbc.update("delete from pregunta");
+        jdbc.update("delete from factor");
+        jdbc.update("delete from competencia");
+        jdbc.update("delete from item_opcion");
+        jdbc.update("delete from opcion_respuesta");
+        jdbc.update("delete from consultor");
+    }
+
+    @Test
+    void getListadoDevuelveSoloActivasOrdenadasSinItemsYSoportaFiltroVacio() throws Exception {
+        guardar("VERDADERO_FALSO", "Opciones dicotómicas", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+        guardar("ESCALA_DESEMPENO", "Cinco niveles valorativos", false,
+                item(1, "Malo"), item(2, "Excelente"));
+        guardar("ESCALA_ELIMINADA", "Dada de baja", true,
+                item(1, "Sí"), item(2, "No"));
+
+        HttpResponse<String> response = enviarGet("");
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode lista = json.readTree(response.body());
+        assertThat(lista.isArray()).isTrue();
+        assertThat(lista.size()).isEqualTo(2);
+        assertThat(lista.get(0).path("nombre").asString()).isEqualTo("ESCALA_DESEMPENO");
+        assertThat(lista.get(0).path("descripcion").asString()).isEqualTo("Cinco niveles valorativos");
+        assertThat(lista.get(0).has("items")).isFalse();
+        assertThat(lista.get(1).path("nombre").asString()).isEqualTo("VERDADERO_FALSO");
+
+        HttpResponse<String> filtroVacio = enviarGet("?nombre=" + codificar("   "));
+        assertThat(filtroVacio.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(filtroVacio.body()).size()).isEqualTo(2);
+    }
+
+    @Test
+    void getListadoFiltraPorNombreIgnorandoMayusculasYEscapandoComodinesYPagina() throws Exception {
+        guardar("CUMPLIMIENTO 100%", "Porcentaje completo", false,
+                item(1, "Sí"), item(2, "No"));
+        guardar("CUMPLIMIENTO 1000", "Mil puntos", false,
+                item(1, "Sí"), item(2, "No"));
+        guardar("OPCION_A", "Con guion bajo", false,
+                item(1, "Sí"), item(2, "No"));
+        guardar("OPCIONXA", "Sin guion bajo", false,
+                item(1, "Sí"), item(2, "No"));
+        guardar("NIVEL!1", "Con signo de exclamación", false,
+                item(1, "Sí"), item(2, "No"));
+        guardar("NIVEL1", "Sin signo de exclamación", false,
+                item(1, "Sí"), item(2, "No"));
+
+        HttpResponse<String> porPorcentaje = enviarGet("?nombre=" + codificar("cumplimiento 100%"));
+        assertThat(porPorcentaje.statusCode()).isEqualTo(200);
+        JsonNode resPorcentaje = json.readTree(porPorcentaje.body());
+        assertThat(resPorcentaje.size()).isEqualTo(1);
+        assertThat(resPorcentaje.get(0).path("nombre").asString()).isEqualTo("CUMPLIMIENTO 100%");
+
+        HttpResponse<String> porGuion = enviarGet("?nombre=" + codificar("opcion_a"));
+        assertThat(json.readTree(porGuion.body()).size()).isEqualTo(1);
+        assertThat(json.readTree(porGuion.body()).get(0).path("nombre").asString()).isEqualTo("OPCION_A");
+
+        HttpResponse<String> porExclamacion = enviarGet("?nombre=" + codificar("nivel!1"));
+        assertThat(json.readTree(porExclamacion.body()).size()).isEqualTo(1);
+        assertThat(json.readTree(porExclamacion.body()).get(0).path("nombre").asString()).isEqualTo("NIVEL!1");
+
+        HttpResponse<String> pagina = enviarGet("?offset=1&cantidad=2");
+        assertThat(pagina.statusCode()).isEqualTo(200);
+        JsonNode resPagina = json.readTree(pagina.body());
+        assertThat(resPagina.size()).isEqualTo(2);
+        assertThat(resPagina.get(0).path("nombre").asString()).isEqualTo("CUMPLIMIENTO 1000");
+        assertThat(resPagina.get(1).path("nombre").asString()).isEqualTo("NIVEL!1");
+    }
+
+    @Test
+    void getListadoDevuelve400SiParametrosFueraDeRangoONombreSupera50Caracteres() throws Exception {
+        assertThat(enviarGet("?offset=-1").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("?cantidad=0").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("?cantidad=101").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("?nombre=" + "A".repeat(51)).statusCode()).isEqualTo(400);
+        assertThat(enviarGet("?nombre=" + "A".repeat(50)).statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void getPorIdDevuelveDetalleConItemsOrdenadosOErrores400Y404() throws Exception {
+        OpcionRespuesta activa = guardar("ESCALA_DESEMPENO", "Escala de tres niveles", false,
+                item(3, "Excelente"),
+                item(1, "Malo"),
+                item(2, "Regular"));
+        OpcionRespuesta eliminada = guardar("OPCION_HISTORICA", "Dada de baja", true,
+                item(1, "Sí"),
+                item(2, "No"));
+
+        HttpResponse<String> ok = enviarGet("/" + activa.getId());
+        assertThat(ok.statusCode()).isEqualTo(200);
+        JsonNode nodo = json.readTree(ok.body());
+        assertThat(nodo.path("id").asLong()).isEqualTo(activa.getId());
+        assertThat(nodo.path("nombre").asString()).isEqualTo("ESCALA_DESEMPENO");
+        assertThat(nodo.path("descripcion").asString()).isEqualTo("Escala de tres niveles");
+        JsonNode items = nodo.path("items");
+        assertThat(items.isArray()).isTrue();
+        assertThat(items.size()).isEqualTo(3);
+        assertThat(items.get(0).path("orden").asInt()).isEqualTo(1);
+        assertThat(items.get(0).path("descripcion").asString()).isEqualTo("Malo");
+        assertThat(items.get(1).path("orden").asInt()).isEqualTo(2);
+        assertThat(items.get(1).path("descripcion").asString()).isEqualTo("Regular");
+        assertThat(items.get(2).path("orden").asInt()).isEqualTo(3);
+        assertThat(items.get(2).path("descripcion").asString()).isEqualTo("Excelente");
+
+        assertThat(enviarGet("/0").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("/-3").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("/abc").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("/99999").statusCode()).isEqualTo(404);
+        assertThat(enviarGet("/" + eliminada.getId()).statusCode()).isEqualTo(404);
+    }
+
+    @Test
+    void postCreaOpcionRespuestaConItemsOrdenadosNormalizadosYLocationHeader201() throws Exception {
+        String cuerpo = """
+                {
+                  "nombre": "  ESCALA_ACUERDO  ",
+                  "descripcion": "  Tres grados de acuerdo  ",
+                  "items": [
+                    { "orden": 3, "descripcion": "  De acuerdo  " },
+                    { "orden": 1, "descripcion": "  En desacuerdo  " },
+                    { "orden": 2, "descripcion": "  Neutral  " }
+                  ]
+                }
+                """;
+
+        HttpResponse<String> response = enviarPost(cuerpo);
+
+        assertThat(response.statusCode()).isEqualTo(201);
+        JsonNode creado = json.readTree(response.body());
+        long idCreado = creado.path("id").asLong();
+        assertThat(idCreado).isPositive();
+        assertThat(response.headers().firstValue("Location"))
+                .hasValue("/api/opciones-respuesta/" + idCreado);
+        assertThat(creado.path("nombre").asString()).isEqualTo("ESCALA_ACUERDO");
+        assertThat(creado.path("descripcion").asString()).isEqualTo("Tres grados de acuerdo");
+
+        JsonNode items = creado.path("items");
+        assertThat(items.size()).isEqualTo(3);
+        assertThat(items.get(0).path("orden").asInt()).isEqualTo(1);
+        assertThat(items.get(0).path("descripcion").asString()).isEqualTo("En desacuerdo");
+        assertThat(items.get(1).path("orden").asInt()).isEqualTo(2);
+        assertThat(items.get(1).path("descripcion").asString()).isEqualTo("Neutral");
+        assertThat(items.get(2).path("orden").asInt()).isEqualTo(3);
+        assertThat(items.get(2).path("descripcion").asString()).isEqualTo("De acuerdo");
+
+        HttpResponse<String> consulta = enviarGet("/" + idCreado);
+        assertThat(consulta.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(consulta.body()).path("nombre").asString()).isEqualTo("ESCALA_ACUERDO");
+    }
+
+    @Test
+    void postRechaza409SiNombreActivoExistePeroPermite201SiSoloExisteEliminada() throws Exception {
+        guardar("VERDADERO_FALSO", "Activa actual", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+        guardar("ESCALA_HISTORICA", "Dada de baja", true,
+                item(1, "Uno"), item(2, "Dos"));
+
+        HttpResponse<String> conflicto = enviarPost("""
+                {
+                  "nombre": "  verdadero_falso ",
+                  "descripcion": "Intento duplicado",
+                  "items": [
+                    { "orden": 1, "descripcion": "Sí" },
+                    { "orden": 2, "descripcion": "No" }
+                  ]
+                }
+                """);
+        assertThat(conflicto.statusCode()).isEqualTo(409);
+        JsonNode errConflicto = json.readTree(conflicto.body());
+        assertThat(errConflicto.path("erroresValidacion").path("nombre").asString()).isNotBlank();
+
+        HttpResponse<String> reutilizada = enviarPost("""
+                {
+                  "nombre": "ESCALA_HISTORICA",
+                  "descripcion": "Nueva versión activa",
+                  "items": [
+                    { "orden": 1, "descripcion": "Bajo" },
+                    { "orden": 2, "descripcion": "Alto" }
+                  ]
+                }
+                """);
+        assertThat(reutilizada.statusCode()).isEqualTo(201);
+        assertThat(json.readTree(reutilizada.body()).path("nombre").asString()).isEqualTo("ESCALA_HISTORICA");
+    }
+
+    @Test
+    void postDevuelve400ConErroresValidacionAnteOmisionesOLongitudesExcedidas() throws Exception {
+        HttpResponse<String> omisiones = enviarPost("""
+                {
+                  "nombre": "   ",
+                  "descripcion": "",
+                  "items": [
+                    { "orden": 1, "descripcion": "Único ítem" }
+                  ]
+                }
+                """);
+        assertThat(omisiones.statusCode()).isEqualTo(400);
+        JsonNode erroresOmision = json.readTree(omisiones.body()).path("erroresValidacion");
+        assertThat(erroresOmision.path("nombre").asString()).isNotBlank();
+        assertThat(erroresOmision.path("descripcion").asString()).isNotBlank();
+        assertThat(erroresOmision.path("items").asString()).isNotBlank();
+
+        String largosExcedidos = """
+                {
+                  "nombre": "%s",
+                  "descripcion": "%s",
+                  "items": [
+                    { "orden": 0, "descripcion": "   " },
+                    { "orden": 2, "descripcion": "%s" }
+                  ]
+                }
+                """.formatted("N".repeat(51), "D".repeat(1001), "I".repeat(151));
+
+        HttpResponse<String> excedidos = enviarPost(largosExcedidos);
+        assertThat(excedidos.statusCode()).isEqualTo(400);
+        JsonNode erroresLargos = json.readTree(excedidos.body()).path("erroresValidacion");
+        assertThat(erroresLargos.path("nombre").asString()).isNotBlank();
+        assertThat(erroresLargos.path("descripcion").asString()).isNotBlank();
+        assertThat(erroresLargos.path("items[0].orden").asString()).isNotBlank();
+        assertThat(erroresLargos.path("items[0].descripcion").asString()).isNotBlank();
+        assertThat(erroresLargos.path("items[1].descripcion").asString()).isNotBlank();
+    }
+
+    @Test
+    void postDevuelve400SiOrdenNoEsConsecutivoDesdeUnoOSiDescripcionesDeItemsSeRepiten() throws Exception {
+        HttpResponse<String> empiezaEnDos = enviarPost("""
+                {
+                  "nombre": "ESCALA_MAL_ORDEN",
+                  "descripcion": "Empieza en 2",
+                  "items": [
+                    { "orden": 2, "descripcion": "A" },
+                    { "orden": 3, "descripcion": "B" }
+                  ]
+                }
+                """);
+        assertThat(empiezaEnDos.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(empiezaEnDos.body()).path("message").asString()).isNotBlank();
+
+        HttpResponse<String> conSalto = enviarPost("""
+                {
+                  "nombre": "ESCALA_CON_SALTO",
+                  "descripcion": "Salta del 1 al 3",
+                  "items": [
+                    { "orden": 1, "descripcion": "A" },
+                    { "orden": 3, "descripcion": "B" }
+                  ]
+                }
+                """);
+        assertThat(conSalto.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(conSalto.body()).path("message").asString()).isNotBlank();
+
+        HttpResponse<String> ordenRepetido = enviarPost("""
+                {
+                  "nombre": "ESCALA_ORDEN_REPETIDO",
+                  "descripcion": "Repite orden 1",
+                  "items": [
+                    { "orden": 1, "descripcion": "A" },
+                    { "orden": 1, "descripcion": "B" }
+                  ]
+                }
+                """);
+        assertThat(ordenRepetido.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(ordenRepetido.body()).path("message").asString()).isNotBlank();
+
+        HttpResponse<String> descripcionRepetida = enviarPost("""
+                {
+                  "nombre": "ESCALA_DESC_REPETIDA",
+                  "descripcion": "Descripciones repetidas ignorando mayúsculas y espacios",
+                  "items": [
+                    { "orden": 1, "descripcion": "Verdadero" },
+                    { "orden": 2, "descripcion": "  verdadero  " }
+                  ]
+                }
+                """);
+        assertThat(descripcionRepetida.statusCode()).isEqualTo(400);
+        assertThat(json.readTree(descripcionRepetida.body()).path("message").asString()).isNotBlank();
+    }
+
+    @Test
+    void putActualizaInPlaceConIntercambiosDeOrdenYDescripcionPreservandoIdsYNombre200() throws Exception {
+        OpcionRespuesta op = guardar("ESCALA_PUT", "Inicial", false, item(1, "A"), item(2, "B"), item(3, "C"));
+        long a = op.getItems().get(0).getId();
+        long b = op.getItems().get(1).getId();
+        long c = op.getItems().get(2).getId();
+
+        HttpResponse<String> response = enviarPut(op.getId(), """
+                { "nombre": "ESCALA_PUT", "descripcion": "  Nueva  ", "items": [
+                  { "id": %d, "orden": 2, "descripcion": "B" },
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 3, "descripcion": "Cc" } ] }
+                """.formatted(a, b, c));
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode body = json.readTree(response.body());
+        assertThat(body.path("nombre").asString()).isEqualTo("ESCALA_PUT");
+        assertThat(body.path("descripcion").asString()).isEqualTo("Nueva");
+        JsonNode items = body.path("items");
+        assertThat(items.size()).isEqualTo(3);
+        assertThat(items.get(0).path("id").asLong()).isEqualTo(b);
+        assertThat(items.get(0).path("descripcion").asString()).isEqualTo("A");
+        assertThat(items.get(1).path("id").asLong()).isEqualTo(a);
+        assertThat(items.get(1).path("descripcion").asString()).isEqualTo("B");
+        assertThat(items.get(2).path("id").asLong()).isEqualTo(c);
+        assertThat(items.get(2).path("orden").asInt()).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from item_opcion", Integer.class)).isEqualTo(3);
+    }
+
+    @Test
+    void putPermiteNombreOmitidoOIgualYRechaza400NombreDistinto() throws Exception {
+        OpcionRespuesta op = guardar("ESCALA_NOMBRE", "Inicial", false, item(1, "A"), item(2, "B"));
+        long a = op.getItems().get(0).getId();
+        long b = op.getItems().get(1).getId();
+        String items = "[{\"id\": %d, \"orden\": 1, \"descripcion\": \"A\"}, {\"id\": %d, \"orden\": 2, \"descripcion\": \"B\"}]".formatted(a, b);
+
+        assertThat(enviarPut(op.getId(), "{\"nombre\": \" ESCALA_NOMBRE \", \"descripcion\": \"X\", \"items\": " + items + "}").statusCode()).isEqualTo(200);
+        assertThat(enviarPut(op.getId(), "{\"descripcion\": \"Y\", \"items\": " + items + "}").statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), "{\"nombre\": \"OTRO\", \"descripcion\": \"Z\", \"items\": " + items + "}").statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void putDevuelve400SiConjuntoDeIdsDeItemsNoCoincideOFallaValidacion() throws Exception {
+        OpcionRespuesta op = guardar("ESCALA_IDS", "Inicial", false, item(1, "A"), item(2, "B"));
+        OpcionRespuesta otra = guardar("ESCALA_OTRA", "Otra", false, item(1, "A"), item(2, "B"));
+        long a = op.getItems().get(0).getId();
+        long ajeno = otra.getItems().get(0).getId();
+
+        assertThat(enviarPut(op.getId(), """
+                { "nombre": "ESCALA_IDS", "descripcion": "X", "items": [
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 2, "descripcion": "B" } ] }
+                """.formatted(a, ajeno)).statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), """
+                { "nombre": "ESCALA_IDS", "descripcion": "X", "items": [
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 2, "descripcion": "B" } ] }
+                """.formatted(a, a)).statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), """
+                { "nombre": "ESCALA_IDS", "descripcion": "X", "items": [
+                  { "orden": 1, "descripcion": "A" },
+                  { "orden": 2, "descripcion": "B" } ] }
+                """).statusCode()).isEqualTo(400);
+        assertThat(enviarPut(op.getId(), "{ \"nombre\": \"ESCALA_IDS\", \"descripcion\": \"\", \"items\": [] }").statusCode()).isEqualTo(400);
+        assertThat(enviarPut(0L, "{ \"nombre\": \"ESCALA_IDS\", \"descripcion\": \"X\", \"items\": [] }").statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void putDevuelve404SiNoExisteOEstaEliminada() throws Exception {
+        OpcionRespuesta eliminada = guardar("ESCALA_BAJA", "Baja", true, item(1, "A"), item(2, "B"));
+        long a = eliminada.getItems().get(0).getId();
+        long b = eliminada.getItems().get(1).getId();
+        String cuerpo = """
+                { "nombre": "ESCALA_BAJA", "descripcion": "X", "items": [
+                  { "id": %d, "orden": 1, "descripcion": "A" },
+                  { "id": %d, "orden": 2, "descripcion": "B" } ] }
+                """.formatted(a, b);
+
+        assertThat(enviarPut(eliminada.getId(), cuerpo).statusCode()).isEqualTo(404);
+        assertThat(enviarPut(999999L, cuerpo).statusCode()).isEqualTo(404);
+    }
+
+    @Test
+    void deleteMarcaEliminadaAunqueExistaOtraEliminadaConMismoNombreOPreguntaEliminadaYRegistraAuditoria204() throws Exception {
+        Consultor consultor = guardarConsultor("CONSULTOR_BAJA", true);
+        String token = tokenConsultorVigente(consultor.getId());
+
+        OpcionRespuesta historica = guardar("VERDADERO_FALSO", "Histórica eliminada", true,
+                item(1, "Verdadero"), item(2, "Falso"));
+        OpcionRespuesta activa = guardar("VERDADERO_FALSO", "Activa con pregunta eliminada", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+        insertarPreguntaAsociada(activa.getId(), "PREG_ELIMINADA", true);
+
+        HttpResponse<String> response = enviarDelete("/" + activa.getId(), token);
+
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(response.body()).isEmpty();
+        assertThat(enviarGet("/" + activa.getId()).statusCode()).isEqualTo(404);
+        assertThat(enviarGet("").body()).isEqualTo("[]");
+        assertThat(opcionRespuestaDAO.buscarPorId(historica.getId()).orElseThrow().getEliminada()).isTrue();
+
+        Map<String, Object> auditoria = jdbc.queryForMap(
+                "select consultor_id, fecha_hora, accion, entidad, entidad_id, detalle from registro_auditoria");
+        assertThat(((Number) auditoria.get("CONSULTOR_ID")).longValue()).isEqualTo(consultor.getId());
+        assertThat(auditoria.get("FECHA_HORA")).isNotNull();
+        assertThat(auditoria.get("ACCION")).isEqualTo("BAJA");
+        assertThat(auditoria.get("ENTIDAD")).isEqualTo("OPCION_RESPUESTA");
+        assertThat(((Number) auditoria.get("ENTIDAD_ID")).longValue()).isEqualTo(activa.getId());
+        assertThat(String.valueOf(auditoria.get("DETALLE"))).contains("VERDADERO_FALSO");
+    }
+
+    @Test
+    void deleteRechaza409ConMensajeExactoSiTienePreguntaActivaAsociadaYNoAudita() throws Exception {
+        Consultor consultor = guardarConsultor("CONSULTOR_409", true);
+        String token = tokenConsultorVigente(consultor.getId());
+
+        OpcionRespuesta enUso = guardar("ESCALA_DESEMPENO", "Cinco niveles", false,
+                item(1, "Malo"), item(2, "Excelente"));
+        insertarPreguntaAsociada(enUso.getId(), "PREG_ACTIVA", false);
+
+        HttpResponse<String> response = enviarDelete("/" + enUso.getId(), token);
+
+        assertThat(response.statusCode()).isEqualTo(409);
+        JsonNode body = json.readTree(response.body());
+        assertThat(body.path("message").asString())
+                .isEqualTo("La opción de respuesta ESCALA_DESEMPENO está siendo usada en la base de datos y no puede eliminarse.");
+        assertThat(enviarGet("/" + enUso.getId()).statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("select count(*) from registro_auditoria", Integer.class)).isZero();
+    }
+
+    @Test
+    void deleteExigeCookieAccessTokenDeConsultorActivoYDevuelve401AnteRechazos() throws Exception {
+        Consultor activo = guardarConsultor("CONSULTOR_OK", true);
+        Consultor inactivo = guardarConsultor("CONSULTOR_INACTIVO", false);
+        OpcionRespuesta opcion = guardar("ESCALA_AUTH", "Activa", false,
+                item(1, "Sí"), item(2, "No"));
+
+        String tokenVencido = emisorTokens.emitirAccess(
+                String.valueOf(activo.getId()), "CONSULTOR", Instant.now().minusSeconds(10));
+        String refreshToken = emisorTokens.emitirRefresh(
+                1L, 0L, String.valueOf(activo.getId()), "CONSULTOR", Instant.now().plusSeconds(300));
+        String tokenCandidato = emisorTokens.emitirAccess(
+                String.valueOf(activo.getId()), "CANDIDATO", Instant.now().plusSeconds(300));
+        String tokenConsultorInexistente = tokenConsultorVigente(999999L);
+        String tokenConsultorInactivo = tokenConsultorVigente(inactivo.getId());
+
+        assertThat(enviarDelete("/" + opcion.getId(), null).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), "token-invalido").statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenVencido).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), refreshToken).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenCandidato).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenConsultorInexistente).statusCode()).isEqualTo(401);
+        assertThat(enviarDelete("/" + opcion.getId(), tokenConsultorInactivo).statusCode()).isEqualTo(401);
+
+        assertThat(enviarGet("/" + opcion.getId()).statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("select count(*) from registro_auditoria", Integer.class)).isZero();
+    }
+
+    @Test
+    void deleteDevuelve400SiIdNoEsPositivoY404SiNoExisteOYaEstaEliminada() throws Exception {
+        Consultor consultor = guardarConsultor("CONSULTOR_404", true);
+        String token = tokenConsultorVigente(consultor.getId());
+        OpcionRespuesta eliminada = guardar("ESCALA_YA_BAJA", "Eliminada", true,
+                item(1, "Sí"), item(2, "No"));
+
+        assertThat(enviarDelete("/0", token).statusCode()).isEqualTo(400);
+        assertThat(enviarDelete("/-5", token).statusCode()).isEqualTo(400);
+        assertThat(enviarDelete("/abc", token).statusCode()).isEqualTo(400);
+        assertThat(enviarDelete("/999999", token).statusCode()).isEqualTo(404);
+        assertThat(enviarDelete("/" + eliminada.getId(), token).statusCode()).isEqualTo(404);
+        assertThat(jdbc.queryForObject("select count(*) from registro_auditoria", Integer.class)).isZero();
+    }
+
+    @Test
+    void getUsoIndicaSiTienePreguntasActivasYDevuelve400O404AnteIdsInvalidos() throws Exception {
+        OpcionRespuesta libre = guardar("ESCALA_LIBRE", "Sin preguntas", false,
+                item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta usada = guardar("ESCALA_USADA", "Con pregunta activa", false,
+                item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta conPreguntaEliminada = guardar("ESCALA_PREG_BAJA", "Solo pregunta eliminada", false,
+                item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta eliminada = guardar("ESCALA_BAJA", "Eliminada", true,
+                item(1, "Sí"), item(2, "No"));
+        insertarPreguntaAsociada(usada.getId(), "USO_ACTIVA", false);
+        insertarPreguntaAsociada(conPreguntaEliminada.getId(), "USO_BAJA", true);
+
+        HttpResponse<String> respuestaLibre = enviarGet("/" + libre.getId() + "/uso");
+        assertThat(respuestaLibre.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(respuestaLibre.body()).path("enUso").asBoolean()).isFalse();
+
+        HttpResponse<String> respuestaUsada = enviarGet("/" + usada.getId() + "/uso");
+        assertThat(respuestaUsada.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(respuestaUsada.body()).path("enUso").asBoolean()).isTrue();
+
+        assertThat(json.readTree(enviarGet("/" + conPreguntaEliminada.getId() + "/uso").body())
+                .path("enUso").asBoolean()).isFalse();
+        assertThat(enviarGet("/0/uso").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("/999999/uso").statusCode()).isEqualTo(404);
+        assertThat(enviarGet("/" + eliminada.getId() + "/uso").statusCode()).isEqualTo(404);
+    }
+
+    private Consultor guardarConsultor(String username, boolean activo) {
+        return consultorDAO.guardar(new Consultor(
+                null,
+                username,
+                "Ana",
+                "Gómez",
+                username.toLowerCase(Locale.ROOT) + "@capitalhumano.test",
+                activo,
+                LocalDateTime.of(2026, 4, 1, 9, 0)));
+    }
+
+    private String tokenConsultorVigente(Long consultorId) {
+        return emisorTokens.emitirAccess(
+                String.valueOf(consultorId), "CONSULTOR", Instant.now().plusSeconds(300));
+    }
+
+    private void insertarPreguntaAsociada(Long opcionRespuestaId, String sufijo, boolean eliminada) {
+        jdbc.update("""
+                insert into competencia (codigo, nombre, descripcion, tipo, eliminada)
+                values (?, ?, 'Desc', 'TECNICA', false)
+                """, "COMP_" + sufijo, "Competencia " + sufijo);
+        Long competenciaId = jdbc.queryForObject(
+                "select id from competencia where codigo = ?", Long.class, "COMP_" + sufijo);
+
+        jdbc.update("""
+                insert into factor (competencia_id, codigo, nombre, orden, descripcion, eliminado)
+                values (?, ?, ?, 1, 'Desc', false)
+                """, competenciaId, "FAC_" + sufijo, "Factor " + sufijo);
+        Long factorId = jdbc.queryForObject(
+                "select id from factor where codigo = ?", Long.class, "FAC_" + sufijo);
+
+        jdbc.update("""
+                insert into pregunta (factor_id, opcion_respuesta_id, nombre, enunciado, descripcion, activa, eliminada)
+                values (?, ?, ?, ?, null, true, ?)
+                """, factorId, opcionRespuestaId, "PREG_" + sufijo, "¿Enunciado " + sufijo + "?", eliminada);
+    }
+
+    private OpcionRespuesta guardar(String nombre, String descripcion, boolean eliminada, ItemOpcion... items) {
+        OpcionRespuesta opcion = new OpcionRespuesta(null, nombre, descripcion, eliminada, new ArrayList<>());
+        for (ItemOpcion item : items) {
+            item.setOpcionRespuesta(opcion);
+            opcion.getItems().add(item);
+        }
+        return opcionRespuestaDAO.guardar(opcion);
+    }
+
+    private static ItemOpcion item(int orden, String descripcion) {
+        return new ItemOpcion(null, null, orden, descripcion);
+    }
+
+    private static String codificar(String valor) {
+        return URLEncoder.encode(valor, StandardCharsets.UTF_8);
+    }
+
+    private HttpResponse<String> enviarGet(String sufijo) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + puerto + "/api/opciones-respuesta" + sufijo))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .GET()
+                .build();
+        return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> enviarPost(String cuerpoJson) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + puerto + "/api/opciones-respuesta"))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(cuerpoJson, StandardCharsets.UTF_8))
+                .build();
+        return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> enviarPut(Long id, String cuerpoJson) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + puerto + "/api/opciones-respuesta/" + id))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(cuerpoJson, StandardCharsets.UTF_8))
+                .build();
+        return CLIENTE.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> enviarDelete(String sufijo, String accessToken) throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + puerto + "/api/opciones-respuesta" + sufijo))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .DELETE();
+        if (accessToken != null) {
+            builder.header("Cookie", AuthController.COOKIE_ACCESS + "=" + accessToken);
+        }
+        return CLIENTE.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    }
+}
