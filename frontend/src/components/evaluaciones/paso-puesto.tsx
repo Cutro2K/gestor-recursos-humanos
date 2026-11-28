@@ -3,11 +3,29 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { Variants } from "motion/react";
 import { Button, Modal, Stack, Surface } from "react-ui-lib";
 import { useErrorFeedback } from "@/components/ui/use-error-feedback";
 import { consultarCompetenciasPuesto, listarPuestos } from "@/service/evaluaciones";
 import type { CompetenciaPuesto, Puesto } from "@/service/evaluaciones";
 import styles from "./evaluaciones.module.css";
+
+const SUAVE = [0.25, 1, 0.5, 1] as const;
+
+/**
+ * La sección de competencias primero agranda la tarjeta hacia abajo y después muestra su
+ * contenido; al ocultarse, el contenido se desvanece antes de que la tarjeta se achique.
+ */
+const seccionCompetencias: Variants = {
+  oculta: { height: 0, transition: { duration: 0.25, ease: SUAVE, when: "afterChildren" } },
+  visible: { height: "auto", transition: { duration: 0.3, ease: SUAVE, when: "beforeChildren" } },
+};
+
+const contenidoCompetencias: Variants = {
+  oculta: { opacity: 0, y: -6, transition: { duration: 0.15 } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: SUAVE } },
+};
 
 const formatoPonderacion = new Intl.NumberFormat("es-AR", {
   minimumFractionDigits: 2,
@@ -28,6 +46,7 @@ type PasoPuestoProps = {
  */
 export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }: PasoPuestoProps) {
   const router = useRouter();
+  const reducirMovimiento = useReducedMotion();
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [cargandoPuestos, setCargandoPuestos] = useState(true);
   const [puestoId, setPuestoId] = useState(puestoInicial ? String(puestoInicial.id) : "");
@@ -118,8 +137,7 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
       {feedback}
 
       <Surface as="section" bordered padding="lg" layout={false} aria-labelledby="titulo-puesto">
-        {/* layout={false}: al aparecer las competencias el contenedor crece; la animación de layout
-            escalaba el contenido y parecía que toda la tarjeta se volvía a cargar. */}
+        {/* layout={false}: la animación de layout escalaba el contenido cuando la tarjeta crecía. */}
         <Stack gap="lg" layout={false}>
           <h2 id="titulo-puesto" className="font-semibold">Función o puesto a evaluar</h2>
 
@@ -156,44 +174,61 @@ export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }:
               </span>
             )}
           </div>
-
-          {puestoId && competencias !== null && (
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">Competencias requeridas</h3>
-              {competencias.length === 0 ? (
-                <p className={styles.vacio}>
-                  Esta función o puesto no tiene competencias asociadas, así que no puede evaluarse.
-                </p>
-              ) : (
-                <div
-                  className={styles.tableScroll}
-                  style={{ margin: 0 }}
-                  tabIndex={0}
-                  aria-label="Competencias requeridas"
-                  data-cargando={cargandoCompetencias}
-                  aria-busy={cargandoCompetencias}
-                >
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th scope="col">Competencia</th>
-                        <th scope="col">Ponderación requerida</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {competencias.map((competencia) => (
-                        <tr key={competencia.competenciaId}>
-                          <td>{competencia.nombre}</td>
-                          <td className="tabular-nums">{formatoPonderacion.format(competencia.ponderacionMinima)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
         </Stack>
+
+        {/* Fuera del Stack: así el espacio de separación también se anima en lugar de aparecer de golpe. */}
+        <AnimatePresence initial={false}>
+          {puestoId && competencias !== null && (
+            <motion.div
+              key="competencias"
+              className="overflow-hidden"
+              variants={seccionCompetencias}
+              initial="oculta"
+              animate="visible"
+              exit="oculta"
+              transition={reducirMovimiento ? { duration: 0 } : undefined}
+            >
+              <motion.div
+                className="pt-6"
+                variants={contenidoCompetencias}
+                transition={reducirMovimiento ? { duration: 0 } : undefined}
+              >
+                <h3 className="mb-2 text-sm font-semibold">Competencias requeridas</h3>
+                {competencias.length === 0 ? (
+                  <p className={styles.vacio}>
+                    Esta función o puesto no tiene competencias asociadas, así que no puede evaluarse.
+                  </p>
+                ) : (
+                  <div
+                    className={styles.tableScroll}
+                    style={{ margin: 0 }}
+                    tabIndex={0}
+                    aria-label="Competencias requeridas"
+                    data-cargando={cargandoCompetencias}
+                    aria-busy={cargandoCompetencias}
+                  >
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th scope="col">Competencia</th>
+                          <th scope="col">Ponderación requerida</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {competencias.map((competencia) => (
+                          <tr key={competencia.competenciaId}>
+                            <td>{competencia.nombre}</td>
+                            <td className="tabular-nums">{formatoPonderacion.format(competencia.ponderacionMinima)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Surface>
 
       <div className={styles.accionesPaso}>
