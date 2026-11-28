@@ -55,4 +55,16 @@ public class Pregunta {
 
     @OneToMany(mappedBy = "pregunta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PreguntaItemOpcion> ponderaciones = new ArrayList<>();
+
+    public Pregunta(
+            Long id,
+            Factor factor,
+            OpcionRespuesta opcionRespuesta,
+            String nombre,
+            String enunciado,
+            String descripcion,
+            Boolean activa,
+            Boolean eliminada) {
+        this(id, factor, opcionRespuesta, nombre, enunciado, descripcion, activa, eliminada, new ArrayList<>());
+    }
 }
