@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, Spinner, Surface, TextField, useToast } from "react-ui-lib";
@@ -36,6 +37,7 @@ function alternar(conjunto: Set<number>, id: number) {
 }
 
 type PasoCandidatosProps = {
+  encabezado: ReactNode;
   aEvaluar: Candidato[];
   onCambiarAEvaluar: (candidatos: Candidato[]) => void;
   onSiguiente: () => void;
@@ -46,7 +48,7 @@ type PasoCandidatosProps = {
  * grilla "Candidatos a evaluar", [Quitar] y [Siguiente], que verifica que ninguno tenga
  * un cuestionario activo o en proceso (6.A).
  */
-export function PasoCandidatos({ aEvaluar, onCambiarAEvaluar, onSiguiente }: PasoCandidatosProps) {
+export function PasoCandidatos({ encabezado, aEvaluar, onCambiarAEvaluar, onSiguiente }: PasoCandidatosProps) {
   const router = useRouter();
   const toast = useToast();
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
@@ -60,7 +62,9 @@ export function PasoCandidatos({ aEvaluar, onCambiarAEvaluar, onSiguiente }: Pas
   const [verificando, setVerificando] = useState(false);
   const [avisoCuestionarios, setAvisoCuestionarios] = useState<string | null>(null);
   const siguientePagina = useRef<AbortController | null>(null);
-  const { reportError, feedback, clearError } = useErrorFeedback({ retrying: cargando || cargandoMas });
+  const { reportError, feedback, hasRetryError, clearError } = useErrorFeedback({
+    retrying: cargando || cargandoMas,
+  });
 
   const idsAEvaluar = useMemo(() => new Set(aEvaluar.map((c) => c.id)), [aEvaluar]);
   const hayFiltros = Object.values(consulta.filtros).some(Boolean);
@@ -215,8 +219,12 @@ export function PasoCandidatos({ aEvaluar, onCambiarAEvaluar, onSiguiente }: Pas
   const todosResultadosSeleccionados =
     resultadosSeleccionables.length > 0 && resultadosSeleccionables.every((c) => seleccionResultados.has(c.id));
 
+  // Ante una caída del servicio solo se muestra el error con su reintento, como en Candidatos.
+  if (hasRetryError) return feedback;
+
   return (
     <>
+      {encabezado}
       {feedback}
 
       <CriteriosBusqueda

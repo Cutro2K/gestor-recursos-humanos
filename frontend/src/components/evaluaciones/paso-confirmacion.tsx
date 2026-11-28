@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, Surface, useToast } from "react-ui-lib";
@@ -35,6 +36,7 @@ function descargar(archivo: Blob, nombre: string) {
 }
 
 type PasoConfirmacionProps = {
+  encabezado: ReactNode;
   puesto: Puesto;
   candidatos: Candidato[];
   onVolver: () => void;
@@ -44,7 +46,7 @@ type PasoConfirmacionProps = {
  * Pasos 11 a 18 del CU 25: lista final de candidatos, [Finalizar] genera la evaluación y las
  * claves, y el sistema ofrece exportarlas a un archivo Excel en la carpeta que elija el actor.
  */
-export function PasoConfirmacion({ puesto, candidatos, onVolver }: PasoConfirmacionProps) {
+export function PasoConfirmacion({ encabezado, puesto, candidatos, onVolver }: PasoConfirmacionProps) {
   const router = useRouter();
   const toast = useToast();
   const [generando, setGenerando] = useState(false);
@@ -140,6 +142,7 @@ export function PasoConfirmacion({ puesto, candidatos, onVolver }: PasoConfirmac
 
   return (
     <>
+      {encabezado}
       <Surface as="section" bordered padding="none" layout={false} aria-labelledby="titulo-confirmacion">
         <div className={styles.encabezadoGrilla}>
           <div>

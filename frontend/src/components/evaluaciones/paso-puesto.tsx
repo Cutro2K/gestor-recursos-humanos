@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Modal, Spinner, Stack, Surface } from "react-ui-lib";
@@ -14,6 +15,7 @@ const formatoPonderacion = new Intl.NumberFormat("es-AR", {
 });
 
 type PasoPuestoProps = {
+  encabezado: ReactNode;
   puestoInicial: Puesto | null;
   onVolver: () => void;
   onSiguiente: (puesto: Puesto) => void;
@@ -24,7 +26,7 @@ type PasoPuestoProps = {
  * muestra sus competencias con la ponderación requerida. Si alguna no puede evaluarse (9.A),
  * informa cuáles y el caso de uso finaliza.
  */
-export function PasoPuesto({ puestoInicial, onVolver, onSiguiente }: PasoPuestoProps) {
+export function PasoPuesto({ encabezado, puestoInicial, onVolver, onSiguiente }: PasoPuestoProps) {
   const router = useRouter();
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [cargandoPuestos, setCargandoPuestos] = useState(true);
@@ -107,6 +109,7 @@ export function PasoPuesto({ puestoInicial, onVolver, onSiguiente }: PasoPuestoP
 
   return (
     <>
+      {encabezado}
       {feedback}
 
       <Surface as="section" bordered padding="lg" layout={false} aria-labelledby="titulo-puesto">
