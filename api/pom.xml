@@ -20,6 +20,12 @@
 			<artifactId>commons-csv</artifactId>
 			<version>1.14.1</version>
 		</dependency>
+		<!-- Exportación de claves de ingreso a Excel .xls (CU 25) -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.4.1</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>

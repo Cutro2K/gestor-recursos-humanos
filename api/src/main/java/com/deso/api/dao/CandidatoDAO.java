@@ -3,6 +3,7 @@ package com.deso.api.dao;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.model.enums.TipoDocumento;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,8 +14,12 @@ public interface CandidatoDAO {
 	public List<Candidato> listarActivos(
 			String apellido, String nombre, Long nroCandidato, Long cursor, int cantidad);
 
-	/** Busca un candidato por su ID primario. */
-	public Optional<Candidato> buscarPorId(Long id);
+	/**
+	 * Devuelve los candidatos activos con esos IDs, ordenados por ID, y bloquea sus filas hasta
+	 * el fin de la transacción (CU 25): dos evaluaciones simultáneas del mismo candidato se
+	 * ejecutan una después de la otra, así la segunda ve el cuestionario activo de la primera.
+	 */
+	public List<Candidato> bloquearActivosPorIds(Collection<Long> ids);
 
 	/** Busca por el identificador del sistema de origen, incluyendo candidatos dados de baja. */
 	public Optional<Candidato> buscarPorNumeroCandidato(Long numero);

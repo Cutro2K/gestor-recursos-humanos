@@ -43,4 +43,9 @@ public class Evaluacion {
     // Relación One-to-Many: Una evaluación genera un cuestionario por cada candidato evaluado
     @OneToMany(mappedBy = "evaluacion", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Cuestionario> cuestionarios = new ArrayList<>();
+
+    // Relación One-to-One: snapshot del modelo (competencias, factores, preguntas y opciones)
+    // que comparten todos los cuestionarios de la evaluación (CU 25)
+    @OneToOne(mappedBy = "evaluacion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private ModeloEvaluacion modelo;
 }

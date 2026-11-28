@@ -3,6 +3,7 @@ package com.deso.api.dao;
 import com.deso.api.model.entity.Cuestionario;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,12 @@ public interface CuestionarioDAO {
      * Utilizado en la autenticación del candidato (CU 01).
      */
     Optional<Cuestionario> buscarActivoOEnProcesoPorCandidato(Long candidatoId);
+
+    /**
+     * Busca los cuestionarios activos o en proceso de varios candidatos, con su candidato cargado.
+     * Utilizado para avisar quiénes no pueden ser evaluados nuevamente (CU 25, flujo 6.A).
+     */
+    List<Cuestionario> buscarActivosOEnProcesoPorCandidatos(Collection<Long> candidatoIds);
 
     /**
      * Busca un cuestionario por su identificador primario.

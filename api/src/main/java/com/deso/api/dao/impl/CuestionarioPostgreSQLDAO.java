@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,6 +56,25 @@ public class CuestionarioPostgreSQLDAO implements CuestionarioDAO {
                 .getResultList()
                 .stream()
                 .findFirst();
+    }
+
+    @Override
+    public List<Cuestionario> buscarActivosOEnProcesoPorCandidatos(Collection<Long> candidatoIds) {
+        if (candidatoIds == null || candidatoIds.isEmpty()) {
+            return List.of();
+        }
+
+        return entityManager.createQuery("""
+                SELECT c FROM Cuestionario c
+                JOIN FETCH c.candidato cand
+                WHERE cand.id IN :candidatoIds
+                  AND c.estado IN (:activo, :enProceso)
+                ORDER BY cand.apellido, cand.nombre, cand.id
+                """, Cuestionario.class)
+                .setParameter("candidatoIds", candidatoIds)
+                .setParameter("activo", EstadoCuestionario.ACTIVO)
+                .setParameter("enProceso", EstadoCuestionario.EN_PROCESO)
+                .getResultList();
     }
 
     @Override

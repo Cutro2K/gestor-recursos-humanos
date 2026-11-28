@@ -1,18 +1,7 @@
 package com.deso.api.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class PuestoDTO {
-    private Long id;
-    private String codigo;
-    private String nombre;
-    private String empresa;
-    private String descripcion;
+/**
+ * Puesto que se puede elegir para evaluar candidatos (CU 25, paso 8).
+ */
+public record PuestoDTO(Long id, String codigo, String nombre, String empresa) {
 }

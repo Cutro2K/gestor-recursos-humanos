@@ -24,7 +24,16 @@ public class EvaluacionPostgreSQLDAO implements EvaluacionDAO {
     }
 
     @Override
-    public Optional<Evaluacion> buscarPorId(Long id) {
-        return Optional.ofNullable(entityManager.find(Evaluacion.class, id));
+    public Optional<Evaluacion> buscarConCuestionarios(Long id) {
+        return entityManager.createQuery("""
+                SELECT DISTINCT e FROM Evaluacion e
+                JOIN FETCH e.puesto
+                LEFT JOIN FETCH e.cuestionarios cu
+                LEFT JOIN FETCH cu.candidato
+                WHERE e.id = :id
+                """, Evaluacion.class)
+                .setParameter("id", id)
+                .getResultStream()
+                .findFirst();
     }
 }
