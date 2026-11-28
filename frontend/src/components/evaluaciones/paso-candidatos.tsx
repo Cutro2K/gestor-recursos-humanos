@@ -360,9 +360,23 @@ export function PasoCandidatos({ encabezado, aEvaluar, onCambiarAEvaluar, onSigu
         </div>
       </Surface>
 
-      <Surface as="section" bordered padding="none" layout={false} aria-labelledby="titulo-a-evaluar">
+      <Surface
+        as="section"
+        bordered
+        padding="none"
+        layout={false}
+        aria-labelledby="titulo-a-evaluar"
+        aria-describedby={aEvaluar.length > 0 ? "ayuda-a-evaluar" : undefined}
+      >
         <div className={styles.encabezadoGrilla}>
-          <h2 id="titulo-a-evaluar" className="font-semibold">Candidatos a evaluar</h2>
+          <div>
+            <h2 id="titulo-a-evaluar" className="font-semibold">Candidatos a evaluar</h2>
+            {aEvaluar.length > 0 && (
+              <p id="ayuda-a-evaluar" className={styles.muted}>
+                Se evaluará a todos los candidatos de esta lista. Marcá solo los que quieras quitar.
+              </p>
+            )}
+          </div>
           <span className={styles.muted}>
             {aEvaluar.length} {aEvaluar.length === 1 ? "candidato" : "candidatos"}
           </span>
