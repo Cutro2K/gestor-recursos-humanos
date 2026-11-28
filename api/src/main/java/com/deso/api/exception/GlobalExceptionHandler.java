@@ -234,6 +234,14 @@ public class GlobalExceptionHandler {
         return respuestaError(HttpStatus.CONFLICT, "Recurso en Uso", ex.getMessage(), request);
     }
 
+    // 7c. La evaluación de candidatos no se puede generar (CU 25, flujos 6.A y 9.A) -> 409 Conflict
+    @ExceptionHandler(EvaluacionNoPermitidaException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEvaluacionNoPermitida(
+            EvaluacionNoPermitidaException ex, HttpServletRequest request) {
+        log.warn("Evaluación no permitida en {}: {}", request.getRequestURI(), ex.getMessage());
+        return respuestaError(HttpStatus.CONFLICT, "Evaluación no permitida", ex.getMessage(), request);
+    }
+
     // 8. Recurso no encontrado (CU 13 / CU 17 / CU 18) -> 404 Not Found
     @ExceptionHandler(RecursoNoEncontradoException.class)
     public ResponseEntity<ErrorResponseDTO> handleRecursoNoEncontrado(

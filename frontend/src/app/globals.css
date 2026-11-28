@@ -11,3 +11,13 @@ html {
 html:has([data-ui-theme="dark"] > [data-app-shell]) {
   color-scheme: dark;
 }
+
+/*
+ * Los botones de react-ui-lib animan su tamaño (layout "size"), pero su texto e íconos animan la
+ * posición por separado (layout "position"). Si el botón se mueve porque cambió la altura del
+ * contenido de arriba, el botón salta y el texto viaja desde el lugar viejo, así que se veía fuera
+ * del botón. Sin ese desplazamiento propio, el contenido queda siempre fijo dentro del botón.
+ */
+.ui-button > * {
+  transform: none !important;
+}

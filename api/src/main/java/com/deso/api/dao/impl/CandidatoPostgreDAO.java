@@ -4,10 +4,12 @@ import com.deso.api.dao.CandidatoDAO;
 import com.deso.api.model.entity.Candidato;
 import com.deso.api.model.enums.TipoDocumento;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -41,6 +43,21 @@ public class CandidatoPostgreDAO implements CandidatoDAO {
 				.setParameter("numero", nroCandidato)
 				.setParameter("cursor", cursor)
 				.setMaxResults(cantidad)
+				.getResultList();
+	}
+
+	@Override
+	@Transactional
+	public List<Candidato> bloquearActivosPorIds(Collection<Long> ids) {
+		if (ids == null || ids.isEmpty()) {
+			return List.of();
+		}
+		// El orden fijo por ID evita interbloqueos entre dos evaluaciones con candidatos en común.
+		return entityManager.createQuery(
+				"SELECT c FROM Candidato c WHERE c.id IN :ids AND c.eliminado = false ORDER BY c.id",
+				Candidato.class)
+				.setParameter("ids", ids)
+				.setLockMode(LockModeType.PESSIMISTIC_WRITE)
 				.getResultList();
 	}
 

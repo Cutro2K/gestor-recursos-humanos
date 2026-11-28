@@ -68,13 +68,17 @@ VALUES
     ('COMP-03', 'Lealtad', 'Compromiso e integridad profesional hacia el equipo y la organización.', 'ACTITUDINAL', FALSE);
 
 -- =============================================================================
--- 5. PUESTO_COMPETENCIA (Ponderaciones mínimas para PUESTO-01)
+-- 5. PUESTO_COMPETENCIA (Ponderaciones mínimas de cada puesto)
+-- Para probar el CU 25:
+--   PUESTO-01 tiene competencias sin un factor con al menos 2 preguntas (flujo 9.A).
+--   PUESTO-02 solo pide Gestión de Proyectos, evaluable con el factor FAC-01 (flujo principal).
 -- =============================================================================
 INSERT INTO puesto_competencia (puesto_id, competencia_id, ponderacion_minima)
 VALUES
     (1, 1, 7.00),
     (1, 2, 8.50),
-    (1, 3, 6.00);
+    (1, 3, 6.00),
+    (2, 1, 6.50);
 
 -- =============================================================================
 -- 6. FACTOR (4 registros vinculados a las competencias)
