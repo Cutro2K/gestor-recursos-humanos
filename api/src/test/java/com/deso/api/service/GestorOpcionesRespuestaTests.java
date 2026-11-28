@@ -423,6 +423,70 @@ class GestorOpcionesRespuestaTests {
         assertThat(auditoriaDAO.registros()).isEmpty();
     }
 
+    @Test
+    void darDeAltaRechazaOrdenNoConsecutivoODescripcionRepetidaSinPersistir() {
+        List<List<ItemOpcionDTO>> invalidas = List.of(
+                List.of(new ItemOpcionDTO(null, 2, "A"), new ItemOpcionDTO(null, 3, "B")),
+                List.of(new ItemOpcionDTO(null, 1, "A"), new ItemOpcionDTO(null, 3, "B")),
+                List.of(new ItemOpcionDTO(null, 1, "A"), new ItemOpcionDTO(null, 1, "B")));
+        for (List<ItemOpcionDTO> items : invalidas) {
+            assertThatThrownBy(() -> gestor.darDeAlta(new OpcionRespuestaDTO(null, "ESCALA", "Desc", items)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("consecutivo");
+        }
+
+        OpcionRespuestaDTO repetida = new OpcionRespuestaDTO(null, "ESCALA", "Desc", List.of(
+                new ItemOpcionDTO(null, 1, "Verdadero"),
+                new ItemOpcionDTO(null, 2, "  verdadero  ")));
+        assertThatThrownBy(() -> gestor.darDeAlta(repetida))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no puede repetirse");
+
+        assertThat(gestor.buscarPorNombre(null, 0, 50)).isEmpty();
+    }
+
+    @Test
+    void actualizarRechazaOrdenNoConsecutivoODescripcionRepetidaSinAlterarElEstado() {
+        OpcionRespuesta existente = guardar("VERDADERO_FALSO", "Dicotómica", false,
+                item(1, "Verdadero"), item(2, "Falso"));
+        Long idPrimero = existente.getItems().get(0).getId();
+        Long idSegundo = existente.getItems().get(1).getId();
+
+        OpcionRespuestaDTO conSalto = new OpcionRespuestaDTO(existente.getId(), null, "Nueva", List.of(
+                new ItemOpcionDTO(idPrimero, 1, "Verdadero"),
+                new ItemOpcionDTO(idSegundo, 3, "Falso")));
+        assertThatThrownBy(() -> gestor.actualizar(conSalto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("consecutivo");
+
+        OpcionRespuestaDTO repetida = new OpcionRespuestaDTO(existente.getId(), null, "Nueva", List.of(
+                new ItemOpcionDTO(idPrimero, 1, "Falso"),
+                new ItemOpcionDTO(idSegundo, 2, "FALSO")));
+        assertThatThrownBy(() -> gestor.actualizar(repetida))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no puede repetirse");
+
+        OpcionRespuestaDTO detalle = gestor.buscarPorId(existente.getId());
+        assertThat(detalle.getDescripcion()).isEqualTo("Dicotómica");
+        assertThat(detalle.getItems()).extracting(ItemOpcionDTO::getDescripcion)
+                .containsExactly("Verdadero", "Falso");
+    }
+
+    @Test
+    void estaEnUsoIndicaSiTienePreguntasActivasYFallaSiNoExisteOEstaEliminada() {
+        OpcionRespuesta libre = guardar("LIBRE", "Sin preguntas", false, item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta usada = guardar("USADA", "Con preguntas", false, item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta baja = guardar("BAJA", "Eliminada", true, item(1, "Sí"), item(2, "No"));
+        opcionRespuestaDAO.marcarEnUso(usada.getId());
+
+        assertThat(gestor.estaEnUso(libre.getId())).isFalse();
+        assertThat(gestor.estaEnUso(usada.getId())).isTrue();
+        assertThatThrownBy(() -> gestor.estaEnUso(999L))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+        assertThatThrownBy(() -> gestor.estaEnUso(baja.getId()))
+                .isInstanceOf(RecursoActualmenteEliminadoException.class);
+    }
+
     private Consultor guardarConsultor(String username, boolean activo) {
         return consultorDAO.guardar(new Consultor(
                 null,

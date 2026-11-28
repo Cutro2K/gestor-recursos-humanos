@@ -22,8 +22,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -48,6 +51,7 @@ public class GestorOpcionesRespuesta {
 
     @Transactional
     public OpcionRespuestaDTO darDeAlta(OpcionRespuestaDTO datos) {
+        validarItems(datos.getItems());
         String nombreLimpio = datos.getNombre().strip();
         if (opcionRespuestaDAO.existeActivaPorNombre(nombreLimpio)) {
             throw new RecursoDuplicadoException(
@@ -79,6 +83,7 @@ public class GestorOpcionesRespuesta {
 
     @Transactional
     public OpcionRespuestaDTO actualizar(OpcionRespuestaDTO datos) {
+        validarItems(datos.getItems());
         OpcionRespuesta existente = obtenerActivaPorId(datos.getId());
 
         if (datos.getNombre() != null && !datos.getNombre().isBlank()
@@ -147,6 +152,14 @@ public class GestorOpcionesRespuesta {
         ));
     }
 
+    /**
+     * Indica si la opción de respuesta activa tiene preguntas activas asociadas (CU 31, paso 2):
+     * la interfaz lo consulta antes de pedir la confirmación de la baja.
+     */
+    public boolean estaEnUso(Long id) {
+        return opcionRespuestaDAO.estaEnUso(obtenerActivaPorId(id).getId());
+    }
+
     public List<ListadoOpcionRespuestaDTO> buscarPorNombre(String nombre, Integer offset, Integer cantidad) {
         return opcionRespuestaDAO.buscarActivasPorNombre(nombre, offset, cantidad)
                 .stream()
@@ -156,6 +169,43 @@ public class GestorOpcionesRespuesta {
 
     public OpcionRespuestaDTO buscarPorId(Long id) {
         return mapearADTO(obtenerActivaPorId(id));
+    }
+
+    /**
+     * Valida que los ítems de opción tengan órdenes consecutivos 1..N sin huecos ni repetidos
+     * (CU 29 2.C / CU 30 2.B) y que no repitan descripción ignorando espacios extremos y
+     * mayúsculas/minúsculas (CU 29 2.D / CU 30 2.C). Las omisiones las cubre la validación del DTO.
+     */
+    private void validarItems(List<ItemOpcionDTO> items) {
+        if (items == null || items.size() < 2) {
+            return;
+        }
+
+        List<String> mensajes = new ArrayList<>();
+
+        boolean todosConOrdenPositivo = items.stream()
+                .allMatch(item -> item != null && item.getOrden() != null && item.getOrden() > 0);
+        if (todosConOrdenPositivo) {
+            int n = items.size();
+            Set<Integer> ordenesVistos = new HashSet<>();
+            boolean secuenciaValida = items.stream()
+                    .allMatch(item -> item.getOrden() <= n && ordenesVistos.add(item.getOrden()));
+            if (!secuenciaValida) {
+                mensajes.add("El orden de visualización de los ítems de opción debe ser consecutivo comenzando en 1 sin saltos ni repeticiones.");
+            }
+        }
+
+        Set<String> descripcionesVistas = new HashSet<>();
+        boolean descripcionDuplicada = items.stream()
+                .filter(item -> item != null && item.getDescripcion() != null && !item.getDescripcion().isBlank())
+                .anyMatch(item -> !descripcionesVistas.add(item.getDescripcion().strip().toLowerCase(Locale.ROOT)));
+        if (descripcionDuplicada) {
+            mensajes.add("La descripción de los ítems de opción no puede repetirse dentro de la misma opción de respuesta.");
+        }
+
+        if (!mensajes.isEmpty()) {
+            throw new IllegalArgumentException(String.join(" ", mensajes));
+        }
     }
 
     private OpcionRespuesta obtenerActivaPorId(Long id) {

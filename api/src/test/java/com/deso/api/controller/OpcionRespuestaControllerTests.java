@@ -524,6 +524,34 @@ class OpcionRespuestaControllerTests {
         assertThat(jdbc.queryForObject("select count(*) from registro_auditoria", Integer.class)).isZero();
     }
 
+    @Test
+    void getUsoIndicaSiTienePreguntasActivasYDevuelve400O404AnteIdsInvalidos() throws Exception {
+        OpcionRespuesta libre = guardar("ESCALA_LIBRE", "Sin preguntas", false,
+                item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta usada = guardar("ESCALA_USADA", "Con pregunta activa", false,
+                item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta conPreguntaEliminada = guardar("ESCALA_PREG_BAJA", "Solo pregunta eliminada", false,
+                item(1, "Sí"), item(2, "No"));
+        OpcionRespuesta eliminada = guardar("ESCALA_BAJA", "Eliminada", true,
+                item(1, "Sí"), item(2, "No"));
+        insertarPreguntaAsociada(usada.getId(), "USO_ACTIVA", false);
+        insertarPreguntaAsociada(conPreguntaEliminada.getId(), "USO_BAJA", true);
+
+        HttpResponse<String> respuestaLibre = enviarGet("/" + libre.getId() + "/uso");
+        assertThat(respuestaLibre.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(respuestaLibre.body()).path("enUso").asBoolean()).isFalse();
+
+        HttpResponse<String> respuestaUsada = enviarGet("/" + usada.getId() + "/uso");
+        assertThat(respuestaUsada.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(respuestaUsada.body()).path("enUso").asBoolean()).isTrue();
+
+        assertThat(json.readTree(enviarGet("/" + conPreguntaEliminada.getId() + "/uso").body())
+                .path("enUso").asBoolean()).isFalse();
+        assertThat(enviarGet("/0/uso").statusCode()).isEqualTo(400);
+        assertThat(enviarGet("/999999/uso").statusCode()).isEqualTo(404);
+        assertThat(enviarGet("/" + eliminada.getId() + "/uso").statusCode()).isEqualTo(404);
+    }
+
     private Consultor guardarConsultor(String username, boolean activo) {
         return consultorDAO.guardar(new Consultor(
                 null,

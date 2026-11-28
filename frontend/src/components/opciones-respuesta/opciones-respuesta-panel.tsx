@@ -59,7 +59,7 @@ export function OpcionesRespuestaPanel() {
   const [consulta, setConsulta] = useState({ filtros: FILTROS_VACIOS, revision: 0 });
   const [opciones, setOpciones] = useState<ListadoOpcionRespuestaDTO[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [cursor, setCursor] = useState<number | null>(null);
+  const [siguienteOffset, setSiguienteOffset] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState(false);
@@ -100,7 +100,7 @@ export function OpcionesRespuestaPanel() {
       .then((resultado) => {
         if (controller.signal.aborted) return;
         setOpciones(resultado.opciones);
-        setCursor(resultado.siguienteCursor);
+        setSiguienteOffset(resultado.siguienteOffset);
         const idsRecibidos = new Set(resultado.opciones.map((o) => o.id));
         setSelectedId((prev) => (prev !== null && idsRecibidos.has(prev) ? prev : null));
         clearError();
@@ -109,7 +109,7 @@ export function OpcionesRespuestaPanel() {
         if (controller.signal.aborted) return;
         setOpciones([]);
         setSelectedId(null);
-        setCursor(null);
+        setSiguienteOffset(null);
         setError(true);
         reportError(err, {
           title: "No pudimos completar la consulta",
@@ -151,7 +151,7 @@ export function OpcionesRespuestaPanel() {
   }
 
   async function cargarMas() {
-    if (cursor === null || cargando || siguientePeticion.current) return;
+    if (siguienteOffset === null || cargando || siguientePeticion.current) return;
 
     const controller = new AbortController();
     siguientePeticion.current = controller;
@@ -159,10 +159,10 @@ export function OpcionesRespuestaPanel() {
     setError(false);
 
     try {
-      const resultado = await listarOpcionesRespuesta(consulta.filtros, cursor, controller.signal);
+      const resultado = await listarOpcionesRespuesta(consulta.filtros, siguienteOffset, controller.signal);
       if (controller.signal.aborted) return;
       setOpciones((anteriores) => [...anteriores, ...resultado.opciones]);
-      setCursor(resultado.siguienteCursor);
+      setSiguienteOffset(resultado.siguienteOffset);
     } catch (err) {
       if (controller.signal.aborted) return;
       reportError(err, {
@@ -288,7 +288,7 @@ export function OpcionesRespuestaPanel() {
               </table>
             </div>
 
-            {cursor !== null && !cargando && (
+            {siguienteOffset !== null && !cargando && (
               <div className="flex justify-center pb-4">
                 <Button
                   variant="secondary"

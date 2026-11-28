@@ -22,7 +22,12 @@ export type OpcionRespuestaDetalle = ListadoOpcionRespuestaDTO & {
 
 export type ListadoOpcionesRespuesta = {
   opciones: ListadoOpcionRespuestaDTO[];
-  siguienteCursor: number | null;
+  /** Offset de la página siguiente, o null si esta fue la última. */
+  siguienteOffset: number | null;
+};
+
+export type UsoOpcionRespuesta = {
+  enUso: boolean;
 };
 
 export type CrearOpcionRespuestaPayload = {
@@ -52,10 +57,10 @@ const CANTIDAD_POR_PAGINA = 50;
  */
 export async function listarOpcionesRespuesta(
   filtros: FiltrosOpcionesRespuesta,
-  cursor: number | null,
+  desde: number | null,
   signal?: AbortSignal,
 ): Promise<ListadoOpcionesRespuesta> {
-  const offset = cursor !== null && cursor >= 0 ? cursor : 0;
+  const offset = desde !== null && desde >= 0 ? desde : 0;
   const query = new URLSearchParams({
     offset: String(offset),
     cantidad: String(CANTIDAD_POR_PAGINA),
@@ -80,10 +85,10 @@ export async function listarOpcionesRespuesta(
     descripcion: item.descripcion,
   }));
 
-  const siguienteCursor =
+  const siguienteOffset =
     opciones.length === CANTIDAD_POR_PAGINA ? offset + opciones.length : null;
 
-  return { opciones, siguienteCursor };
+  return { opciones, siguienteOffset };
 }
 
 /**
@@ -100,6 +105,24 @@ export async function obtenerOpcionRespuestaPorId(
   );
   if (!resultado) {
     throw new Error(`No se encontró la opción de respuesta #${id}.`);
+  }
+  return resultado;
+}
+
+/**
+ * Indica si la opción de respuesta tiene preguntas activas asociadas. El CU 31 lo constata
+ * antes de pedir la confirmación de la baja.
+ * Endpoint: GET /api/opciones-respuesta/{id}/uso (CU 31)
+ */
+export async function consultarUsoOpcionRespuesta(
+  id: number,
+  signal?: AbortSignal,
+): Promise<UsoOpcionRespuesta> {
+  const resultado = await apiRequest<UsoOpcionRespuesta>(`opciones-respuesta/${id}/uso`, {
+    signal,
+  });
+  if (!resultado || typeof resultado.enUso !== "boolean") {
+    throw new Error("No pudimos verificar si la opción de respuesta está en uso.");
   }
   return resultado;
 }

@@ -6,6 +6,7 @@ register(new URL("./ts-resolver.mjs", import.meta.url));
 
 const { API_BASE_URL, ApiError } = await import("../src/service/api.ts");
 const {
+  consultarUsoOpcionRespuesta,
   crearOpcionRespuesta,
   eliminarOpcionRespuesta,
   listarOpcionesRespuesta,
@@ -38,10 +39,10 @@ test("listarOpcionesRespuesta envía offset, cantidad y filtro nombre recortado 
     nombre: "ESCALA 100%",
     descripcion: "Escala porcentual completa.",
   });
-  assert.equal(resultado.siguienteCursor, null);
+  assert.equal(resultado.siguienteOffset, null);
 });
 
-test("listarOpcionesRespuesta omite nombre cuando está vacío y calcula siguienteCursor en páginas completas de 50", async () => {
+test("listarOpcionesRespuesta omite nombre cuando está vacío y calcula siguienteOffset en páginas completas de 50", async () => {
   const paginaCompleta = Array.from({ length: 50 }, (_, i) => ({
     id: i + 1,
     nombre: `OPCION_${i + 1}`,
@@ -56,7 +57,7 @@ test("listarOpcionesRespuesta omite nombre cuando está vacío y calcula siguien
   const resultado = await listarOpcionesRespuesta({ nombre: "   " }, 50);
 
   assert.equal(resultado.opciones.length, 50);
-  assert.equal(resultado.siguienteCursor, 100);
+  assert.equal(resultado.siguienteOffset, 100);
 });
 
 test("obtenerOpcionRespuestaPorId consulta GET /opciones-respuesta/{id} y devuelve los ítems de opción ordenados", async () => {
@@ -290,3 +291,24 @@ test("eliminarOpcionRespuesta propaga ApiError 409 cuando la opción está en us
 });
 
 
+
+test("consultarUsoOpcionRespuesta consulta GET /opciones-respuesta/{id}/uso y devuelve enUso", async () => {
+  const urls = [];
+  mock.method(globalThis, "fetch", async (url) => {
+    urls.push(url);
+    return Response.json({ enUso: urls.length === 1 });
+  });
+
+  assert.deepEqual(await consultarUsoOpcionRespuesta(7), { enUso: true });
+  assert.deepEqual(await consultarUsoOpcionRespuesta(8), { enUso: false });
+  assert.deepEqual(urls, [
+    `${API_BASE_URL}/opciones-respuesta/7/uso`,
+    `${API_BASE_URL}/opciones-respuesta/8/uso`,
+  ]);
+});
+
+test("consultarUsoOpcionRespuesta rechaza una respuesta sin el campo enUso", async () => {
+  mock.method(globalThis, "fetch", async () => Response.json({}));
+
+  await assert.rejects(consultarUsoOpcionRespuesta(7), /No pudimos verificar/);
+});
